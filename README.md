@@ -28,12 +28,17 @@
          结果喂回 LLM → 继续思考 → final_answer
 ```
 
+## 环境要求
+
+- Python 3.10+
+- DeepSeek API Key（设为环境变量 `DEEPSEEK_API_KEY`）
+
 ## 快速开始
 
 ```bash
+cp .env.example .env          # 编辑 .env 填入 DeepSeek API Key
 pip install -r requirements.txt
-python app.py
-# 打开 http://localhost:17890
+python app.py                  # 打开 http://localhost:17890
 ```
 
 ## 文件结构
