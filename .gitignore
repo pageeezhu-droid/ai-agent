@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+screenshot_verify.png
+workspace/
+.env
+*.tmp

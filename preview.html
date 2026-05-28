@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent — CSS Preview</title>
+<style>
+/* ── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background: #FAF9F6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+    color: #141413;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+    border-top: 1px solid #E8E6E1;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────── */
+.sidebar {
+    width: 240px; min-width: 240px; flex: none;
+    background: #ffffff;
+    padding: 32px 24px;
+    display: flex; flex-direction: column;
+    justify-content: center; gap: 4px;
+    border-right: 1px solid #E8E6E1;
+    height: 100vh;
+    position: sticky; top: 0;
+}
+.sidebar-brand {
+    font-size: 22px; font-weight: 700;
+    color: #141413; padding: 0 0 32px 0;
+    letter-spacing: -0.3px;
+}
+.sidebar-section {
+    font-size: 11px; font-weight: 600;
+    color: #6B6966; text-transform: uppercase;
+    letter-spacing: 0.8px; padding: 20px 0 8px;
+}
+.memory-label {
+    color: #6B6966; font-size: 13px;
+    font-weight: 400; padding: 4px 0;
+}
+.sidebar-btn {
+    padding: 10px 24px; background: #141413;
+    border-radius: 8px; color: #ffffff;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; text-align: center;
+    width: 80%; border: none;
+    transition: background 0.15s;
+    margin-top: 10px;
+}
+.sidebar-btn:hover {
+    background: #D97757;
+}
+
+/* ── Main Panel ────────────────────────────────────────────── */
+.main-panel {
+    flex: 1; min-width: 0;
+    background: #FAF9F6;
+    display: flex; flex-direction: column;
+}
+.chat-header {
+    padding: 20px 32px;
+    background: #ffffff;
+    flex-shrink: 0;
+    border-bottom: 1px solid #E8E6E1;
+}
+.chat-title {
+    font-size: 16px; font-weight: 600; color: #141413;
+}
+
+/* ── Chat Area ─────────────────────────────────────────────── */
+.chat-area {
+    max-width: 720px; width: 100%;
+    margin: 0 auto; flex: 1;
+    display: flex; flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+}
+
+/* ── Messages container ────────────────────────────────────── */
+.messages {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    flex: 1;
+    padding: 24px 20px;
+    display: flex; flex-direction: column;
+    gap: 8px;
+    min-height: 400px;
+    overflow-y: auto;
+}
+
+/* ── Message bubbles ───────────────────────────────────────── */
+.msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 75%;
+    animation: fadeIn 0.2s ease-out;
+}
+.msg.user {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+.msg.bot {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.msg .bubble {
+    padding: 12px 18px;
+    border-radius: 18px;
+    font-size: 14px; line-height: 1.65;
+    word-break: break-word;
+}
+.msg.user .bubble {
+    background: #F0EEE9;
+    color: #141413;
+    border-bottom-right-radius: 4px;
+}
+.msg.bot .bubble {
+    background: transparent;
+    color: #141413;
+    padding-left: 4px; padding-right: 4px;
+}
+
+.msg .bubble code {
+    background: rgba(0,0,0,0.06);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 13px;
+    font-family: "JetBrains Mono", "Cascadia Code", monospace;
+}
+.msg.bot .bubble code {
+    background: #F0EEE9;
+}
+
+/* ── Input row ──────────────────────────────────────────────── */
+.input-row {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #E8E6E1;
+    padding: 8px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    display: flex; align-items: center; gap: 8px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input-row:focus-within {
+    border-color: #D97757;
+    box-shadow: 0 0 0 3px rgba(217,119,87,0.12);
+}
+.input-row input {
+    background: transparent; border: none;
+    padding: 8px 0; font-size: 14px; color: #141413;
+    flex: 1; outline: none;
+}
+.input-row input::placeholder {
+    color: #999692; font-size: 14px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.plus-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: transparent; color: #6B6966;
+    border: none; cursor: pointer;
+    font-size: 18px; font-weight: 300;
+    display: flex; align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.plus-btn:hover { background: #F0EEE9; color: #141413; }
+
+.send-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: #D97757; color: #ffffff;
+    border: none; cursor: pointer;
+    font-size: 16px; font-weight: 600;
+    display: flex; align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.send-btn:hover { background: #C5694A; }
+
+/* ── Examples ───────────────────────────────────────────────── */
+.examples {
+    display: flex; flex-wrap: wrap;
+    gap: 8px; justify-content: center;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 14px 18px;
+}
+.example-btn {
+    background: #F0EEE9;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px 16px; font-size: 13px;
+    color: #6B6966; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.example-btn:hover {
+    background: #ffffff;
+    border-color: #E8E6E1;
+    color: #141413;
+}
+
+/* ── Scrollbar & Animation ──────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E8E6E1; border-radius: 4px; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<div class="app-layout">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-brand">AI Agent</div>
+        <div class="sidebar-section">会话</div>
+        <div class="memory-label">已记忆 3 轮对话</div>
+        <button class="sidebar-btn">清除对话</button>
+    </div>
+
+    <!-- Main -->
+    <div class="main-panel">
+        <div class="chat-header">
+            <span class="chat-title">AI Agent</span>
+        </div>
+
+        <div class="chat-area">
+
+            <!-- Messages -->
+            <div class="messages">
+
+                <!-- Bot: welcome -->
+                <div class="msg bot">
+                    <div class="bubble">你好，有什么可以帮你？</div>
+                </div>
+
+                <!-- User -->
+                <div class="msg user">
+                    <div class="bubble">爱因斯坦哪年出生？</div>
+                </div>
+
+                <!-- Bot -->
+                <div class="msg bot">
+                    <div class="bubble">
+                        阿尔伯特·爱因斯坦出生于<b>1879年3月14日</b>，逝世于1955年4月18日，享年<b>76岁</b>。
+                    </div>
+                </div>
+
+                <!-- User -->
+                <div class="msg user">
+                    <div class="bubble">杭州今天天气如何？写入 weather.txt</div>
+                </div>
+
+                <!-- Bot with code -->
+                <div class="msg bot">
+                    <div class="bubble">
+                        杭州今天多云转晴，气温 18°C ~ 28°C，东南风 3 级。<br><br>
+                        <code>weather.txt</code> 已写入成功。
+                    </div>
+                </div>
+
+                <!-- User -->
+                <div class="msg user">
+                    <div class="bubble">搜索量子计算最新进展</div>
+                </div>
+
+                <!-- Bot with tool result -->
+                <div class="msg bot">
+                    <div class="bubble">
+                        已搜索到以下量子计算进展：<br><br>
+                        <code>quantum.txt</code> 搜索结果已保存。2026年量子计算在纠错码方面取得重大突破，多个实验室实现了超过1000个物理量子比特的稳定运行。
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Input -->
+            <div class="input-row">
+                <button class="plus-btn">+</button>
+                <input type="text" placeholder="输入消息…">
+                <button class="send-btn">↑</button>
+            </div>
+
+            <!-- Examples -->
+            <div class="examples">
+                <button class="example-btn">爱因斯坦哪年出生？活了多少岁？</button>
+                <button class="example-btn">杭州今天天气如何？写入 weather.txt</button>
+                <button class="example-btn">搜索量子计算并保存到 quantum.txt</button>
+                <button class="example-btn">计算 123456 × 789012</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
