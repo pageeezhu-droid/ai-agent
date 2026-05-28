@@ -4,8 +4,11 @@ LLM API 封装 —— DeepSeek API（兼容 OpenAI 格式）
 
 import json
 import os
-import requests
 
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 API_KEY = os.environ["DEEPSEEK_API_KEY"]
 API_URL = "https://api.deepseek.com/v1/chat/completions"
