@@ -7,7 +7,7 @@ import os
 import requests
 
 
-API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-74dd8e0d8f324fc0b6f92fbc2ea38a6c")
+API_KEY = os.environ["DEEPSEEK_API_KEY"]
 API_URL = "https://api.deepseek.com/v1/chat/completions"
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
