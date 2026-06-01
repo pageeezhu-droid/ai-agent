@@ -115,7 +115,7 @@ def _file_icon(name: str) -> str:
 
 
 def _build_file_tree() -> str:
-    """Generate HTML file tree of workspace directory."""
+    """Generate HTML file tree of workspace directory with clickable items."""
     if not os.path.exists(WORKSPACE_DIR):
         return '<div class="file-tree-empty">workspace 为空</div>'
 
@@ -132,15 +132,25 @@ def _build_file_tree() -> str:
     if not entries:
         return '<div class="file-tree-empty">workspace 为空</div>'
 
-    lines = ['<div class="file-tree">',
-             '<div class="file-tree-root">📁 workspace</div>']
+    lines = [
+        '<div class="file-tree">',
+        '<div class="file-tree-root" data-depth="0">📁 workspace</div>',
+    ]
     for kind, path in entries:
         depth = path.count(os.sep) + 1
         name = os.path.basename(path)
         icon = "📁" if kind == "dir" else _file_icon(name)
         cls = "file-tree-dir" if kind == "dir" else "file-tree-file"
+        onclick = ""
+        data = f'data-depth="{depth}"'
+        if kind == "dir":
+            data += f' data-dir="{_escape_html(path)}"'
+            onclick = ' onclick="window.__tf(event, this)"'
+        else:
+            data += f' data-path="{_escape_html(path)}"'
+            onclick = ' onclick="window.__pf(event, this)"'
         lines.append(
-            f'<div class="file-tree-item {cls}" style="padding-left:{depth * 16}px">'
+            f'<div class="file-tree-item {cls}" style="padding-left:{depth * 16}px" {data}{onclick}>'
             f'<span class="file-icon">{icon}</span> {_escape_html(name)}'
             f"</div>"
         )
@@ -151,6 +161,30 @@ def _build_file_tree() -> str:
 def get_workspace_tree() -> str:
     """Callback: return current workspace file tree HTML."""
     return _build_file_tree()
+
+
+def preview_file_content(path: str) -> str:
+    """Read a workspace file and return HTML preview."""
+    if not path or not path.strip():
+        return ""
+    try:
+        full = os.path.normpath(os.path.join(WORKSPACE_DIR, path))
+        if not full.startswith(os.path.normpath(WORKSPACE_DIR)):
+            return '<div class="file-preview-error">无权访问此文件</div>'
+        if not os.path.isfile(full):
+            return ""
+        with open(full, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read(2000)
+        truncated = os.path.getsize(full) > 2000
+        name = os.path.basename(path)
+        return (
+            f'<div class="file-preview-box">'
+            f'<div class="file-preview-header">📄 {_escape_html(name)}</div>'
+            f'<pre class="file-preview-code">{_escape_html(content)}{"<span class=file-preview-more>…（已截断）</span>" if truncated else ""}</pre>'
+            f"</div>"
+        )
+    except Exception as e:
+        return f'<div class="file-preview-error">读取失败：{_escape_html(str(e))}</div>'
 
 
 def respond(message: str, history: list, agent_history: list, critic_enabled: bool = True):
@@ -280,6 +314,14 @@ with gr.Blocks(title="AI Agent") as demo:
         # ── Sidebar ──
         with gr.Column(elem_classes="sidebar"):
             gr.HTML('<div class="sidebar-brand">AI Agent</div>')
+            # Workspace section (top)
+            gr.HTML('<div class="sidebar-section">工作区</div>')
+            workspace_tree = gr.HTML(value=_build_file_tree(), elem_classes="workspace-tree")
+            selected_file_path = gr.Textbox(visible=False, elem_classes="selected-file-path")
+            file_preview = gr.HTML(value="", elem_classes="file-preview")
+            # Spacer
+            gr.HTML('<div class="sidebar-spacer"></div>')
+            # Conversation section (bottom)
             gr.HTML('<div class="sidebar-section">对话</div>')
             memory_label = gr.Label(value="", elem_classes="memory-label")
             critic_toggle = gr.Checkbox(
@@ -288,8 +330,6 @@ with gr.Blocks(title="AI Agent") as demo:
                 container=False,
             )
             clear_btn = gr.Button("清除对话", elem_classes="sidebar-btn")
-            gr.HTML('<div class="sidebar-section">工作区</div>')
-            workspace_tree = gr.HTML(value=_build_file_tree(), elem_classes="workspace-tree")
 
         # ── Main panel ──
         with gr.Column(elem_classes="main-panel"):
@@ -364,11 +404,20 @@ with gr.Blocks(title="AI Agent") as demo:
         outputs=[chatbot, agent_state, memory_label],
     ).then(get_workspace_tree, None, workspace_tree)
 
-    # Continuous auto-scroll during streaming (rAF loop)
+    # File preview: when user clicks a file in the tree
+    selected_file_path.change(
+        fn=preview_file_content,
+        inputs=selected_file_path,
+        outputs=file_preview,
+        queue=False,
+    )
+
+    # Auto-scroll + folder toggle + file preview JS
     demo.load(
         fn=None,
         js="""
         () => {
+            // Auto-scroll
             let lastH = 0;
             function scroll() {
                 const el = document.querySelector('.block.chat-main');
@@ -379,6 +428,39 @@ with gr.Blocks(title="AI Agent") as demo:
                 requestAnimationFrame(scroll);
             }
             scroll();
+
+            // Folder toggle
+            window.__tf = function(e, el) {
+                e.stopPropagation();
+                const depth = parseInt(el.getAttribute('data-depth'));
+                const collapsed = el.classList.contains('collapsed');
+                let next = el.nextElementSibling;
+                while (next) {
+                    const nd = parseInt(next.getAttribute('data-depth') || '0');
+                    if (nd <= depth) break;
+                    next.style.display = collapsed ? '' : 'none';
+                    next = next.nextElementSibling;
+                }
+                if (collapsed) {
+                    el.classList.remove('collapsed');
+                } else {
+                    el.classList.add('collapsed');
+                }
+            };
+
+            // File preview
+            window.__pf = function(e, el) {
+                e.stopPropagation();
+                const path = el.getAttribute('data-path');
+                if (!path) return;
+                const tb = document.querySelector('.selected-file-path input, .selected-file-path textarea');
+                if (tb) {
+                    tb.value = path;
+                    tb.dispatchEvent(new Event('input', {bubbles: true}));
+                }
+                document.querySelectorAll('.file-tree-item.selected').forEach(i => i.classList.remove('selected'));
+                el.classList.add('selected');
+            };
         }
         """,
     )

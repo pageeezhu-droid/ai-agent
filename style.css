@@ -428,7 +428,7 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     margin-top: 8px !important;
     padding: 0 !important;
     overflow-y: auto !important;
-    max-height: 280px !important;
+    max-height: 220px !important;
 }
 .workspace-tree * {
     font-size: 12px !important;
@@ -451,6 +451,7 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     padding: 4px 0 8px !important;
     font-size: 13px !important;
     letter-spacing: -0.2px !important;
+    cursor: default !important;
 }
 .file-tree-item {
     padding: 3px 8px !important;
@@ -459,8 +460,9 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    cursor: default !important;
+    cursor: pointer !important;
     transition: background 0.1s !important;
+    user-select: none !important;
 }
 .file-tree-item:hover {
     background: #F0EEE9 !important;
@@ -469,9 +471,67 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     color: #141413 !important;
     font-weight: 500 !important;
 }
+.file-tree-dir.collapsed .file-icon {
+    opacity: 0.5 !important;
+}
 .file-tree-file {
     color: #6B6966 !important;
 }
+.file-tree-item.selected {
+    background: #FDF2EE !important;
+    color: #D97757 !important;
+    font-weight: 500 !important;
+}
 .file-icon {
     margin-right: 4px !important;
+    transition: opacity 0.15s !important;
+}
+
+/* ── File preview ─────────────────────────────────────────── */
+.file-preview {
+    margin-top: 4px !important;
+    padding: 0 !important;
+}
+.file-preview-box {
+    border: 1px solid #E8E6E1 !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+}
+.file-preview-header {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #6B6966 !important;
+    padding: 6px 10px !important;
+    background: #F0EEE9 !important;
+    border-bottom: 1px solid #E8E6E1 !important;
+}
+.file-preview-code {
+    margin: 0 !important;
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+    font-family: "JetBrains Mono", "Cascadia Code", monospace !important;
+    color: #141413 !important;
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+    max-height: 140px !important;
+    overflow-y: auto !important;
+    background: #FAF9F6 !important;
+    line-height: 1.5 !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+.file-preview-more {
+    color: #999692 !important;
+    font-style: italic !important;
+}
+.file-preview-error {
+    color: #D97757 !important;
+    font-size: 12px !important;
+    padding: 6px 8px !important;
+}
+
+/* ── Sidebar spacer ───────────────────────────────────────── */
+.sidebar-spacer {
+    flex: 1 1 0 !important;
+    min-height: 12px !important;
 }
