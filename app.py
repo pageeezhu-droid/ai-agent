@@ -164,7 +164,7 @@ def respond(message: str, history: list, agent_history: list, critic_enabled: bo
         history[-1] = {"role": "assistant", "content": reviewing_msg}
         yield history, agent_history
 
-        critique = review_answer(message, visible)
+        critique = review_answer(message, visible, agent_history)
 
         needs_revision = (
             critique
@@ -289,6 +289,16 @@ with gr.Blocks(title="AI Agent") as demo:
         outputs=[chatbot, agent_state],
         queue=True,
     )
+    # Auto-scroll after each response chunk
+    send_event.then(
+        fn=None,
+        js="""
+        () => {
+            const el = document.querySelector('.block.chat-main');
+            if (el) el.scrollTop = el.scrollHeight;
+        }
+        """,
+    )
     send_event.then(lambda: "", None, msg)
     send_event.then(get_memory_status, [agent_state], [memory_label])
 
@@ -296,6 +306,25 @@ with gr.Blocks(title="AI Agent") as demo:
         fn=clear_memory,
         inputs=[],
         outputs=[chatbot, agent_state, memory_label],
+    )
+
+    # Continuous auto-scroll during streaming (rAF loop)
+    demo.load(
+        fn=None,
+        js="""
+        () => {
+            let lastH = 0;
+            function scroll() {
+                const el = document.querySelector('.block.chat-main');
+                if (el && el.scrollHeight !== lastH) {
+                    el.scrollTop = el.scrollHeight;
+                    lastH = el.scrollHeight;
+                }
+                requestAnimationFrame(scroll);
+            }
+            scroll();
+        }
+        """,
     )
 
 

@@ -180,6 +180,24 @@ html, body {
     overflow: visible !important;
 }
 
+/* Kill Gradio 6.x default user-message bubble (orange/blue bg) */
+.message-row.user-row .message,
+.message-row.user-row .message-content,
+.message-row.user-row .message-content *,
+.message-row.user-row span,
+.message-row.user-row .prose,
+.message-row.user-row [class*="bubble"],
+.user.message, .user.message * {
+    background: transparent !important;
+    border: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
 /* ── Input — capsule card ────────────────────────────────── */
 .input-row {
     background: #ffffff !important;
