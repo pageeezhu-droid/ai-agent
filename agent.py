@@ -210,7 +210,23 @@ def trim_messages(messages: list) -> list:
 # ── 自反思：错误检测 + 经验库 ──────────────────────────────
 
 _ERROR_KEYWORDS = ["错误", "出错", "失败", "超时", "不存在", "未找到", "状态码", "没有权限"]
-_EXPERIENCE_FILE = os.path.join(WORKSPACE_DIR, "experience.json")
+
+_AGENT_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".agent")
+_EXPERIENCE_FILE = os.path.join(_AGENT_DATA_DIR, "experience.json")
+_MEMORY_FILE = os.path.join(_AGENT_DATA_DIR, "memory.json")
+
+# Ensure .agent/ directory exists and migrate old files
+os.makedirs(_AGENT_DATA_DIR, exist_ok=True)
+for old_name, new_path in [
+    ("experience.json", _EXPERIENCE_FILE),
+    ("memory.json", _MEMORY_FILE),
+]:
+    old_path = os.path.join(WORKSPACE_DIR, old_name)
+    if os.path.exists(old_path) and not os.path.exists(new_path):
+        try:
+            os.rename(old_path, new_path)
+        except Exception:
+            pass
 
 
 def _is_tool_error(result: str) -> bool:
@@ -263,7 +279,6 @@ def _load_experience_text() -> str:
 
 # ── 长期记忆：摘要压缩 + 持久化 ────────────────────────────
 
-_MEMORY_FILE = os.path.join(WORKSPACE_DIR, "memory.json")
 _MEMORY_TRIGGER = 16   # 对话超过此条数触发摘要
 _MEMORY_KEEP = 6       # 保留最近条数
 

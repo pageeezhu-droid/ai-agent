@@ -141,16 +141,13 @@ def _build_file_tree() -> str:
         name = os.path.basename(path)
         icon = "📁" if kind == "dir" else _file_icon(name)
         cls = "file-tree-dir" if kind == "dir" else "file-tree-file"
-        onclick = ""
         data = f'data-depth="{depth}"'
         if kind == "dir":
             data += f' data-dir="{_escape_html(path)}"'
-            onclick = ' onclick="window.__tf(event, this)"'
         else:
             data += f' data-path="{_escape_html(path)}"'
-            onclick = ' onclick="window.__pf(event, this)"'
         lines.append(
-            f'<div class="file-tree-item {cls}" style="padding-left:{depth * 16}px" {data}{onclick}>'
+            f'<div class="file-tree-item {cls}" style="padding-left:{depth * 16}px" {data}>'
             f'<span class="file-icon">{icon}</span> {_escape_html(name)}'
             f"</div>"
         )
@@ -189,11 +186,12 @@ def preview_file_content(path: str) -> str:
 
 def respond(message: str, history: list, agent_history: list, critic_enabled: bool = True):
     if not message.strip():
-        return history, agent_history
+        yield history, agent_history
+        return
 
     history.append({"role": "user", "content": message})
     history.append({"role": "assistant", "content": ""})
-    yield history, agent_history
+    yield history, agent_history, _build_file_tree()
 
     thinking_steps = []   # [(kind, content), ...]
     thinking_buf = ""     # current round token buffer
@@ -249,7 +247,7 @@ def respond(message: str, history: list, agent_history: list, critic_enabled: bo
         reviewing_msg = _build_message(thinking_steps, "", visible)
         reviewing_msg += '\n\n<div class="critic-reviewing">🔍 Critic 审查中…</div>'
         history[-1] = {"role": "assistant", "content": reviewing_msg}
-        yield history, agent_history
+        yield history, agent_history, _build_file_tree()
 
         critique = review_answer(message, visible, agent_history)
 
@@ -288,7 +286,7 @@ def respond(message: str, history: list, agent_history: list, critic_enabled: bo
     if summary:
         print(f"[记忆] 已摘要旧对话并持久化")
 
-    yield history, agent_history
+    yield history, agent_history, _build_file_tree()
 
 
 def clear_memory():
@@ -417,7 +415,7 @@ with gr.Blocks(title="AI Agent") as demo:
         queue=False,
     )
 
-    # Auto-scroll + folder toggle + file preview JS
+    # Auto-scroll + file tree interaction (event delegation)
     demo.load(
         fn=None,
         js="""
@@ -434,38 +432,41 @@ with gr.Blocks(title="AI Agent") as demo:
             }
             scroll();
 
-            // Folder toggle
-            window.__tf = function(e, el) {
+            // Event delegation for file tree clicks
+            document.addEventListener('click', function(e) {
+                const item = e.target.closest('.file-tree-item');
+                if (!item) return;
                 e.stopPropagation();
-                const depth = parseInt(el.getAttribute('data-depth'));
-                const collapsed = el.classList.contains('collapsed');
-                let next = el.nextElementSibling;
-                while (next) {
-                    const nd = parseInt(next.getAttribute('data-depth') || '0');
-                    if (nd <= depth) break;
-                    next.style.display = collapsed ? '' : 'none';
-                    next = next.nextElementSibling;
-                }
-                if (collapsed) {
-                    el.classList.remove('collapsed');
-                } else {
-                    el.classList.add('collapsed');
-                }
-            };
 
-            // File preview
-            window.__pf = function(e, el) {
-                e.stopPropagation();
-                const path = el.getAttribute('data-path');
-                if (!path) return;
-                const tb = document.querySelector('.hidden-path-input input, .hidden-path-input textarea');
-                if (tb) {
-                    tb.value = path;
-                    tb.dispatchEvent(new Event('input', {bubbles: true}));
+                if (item.classList.contains('file-tree-dir')) {
+                    // Folder toggle
+                    const depth = parseInt(item.getAttribute('data-depth'));
+                    const collapsed = item.classList.contains('collapsed');
+                    let next = item.nextElementSibling;
+                    while (next) {
+                        const nd = parseInt(next.getAttribute('data-depth') || '0');
+                        if (nd <= depth) break;
+                        next.style.display = collapsed ? '' : 'none';
+                        next = next.nextElementSibling;
+                    }
+                    if (collapsed) {
+                        item.classList.remove('collapsed');
+                    } else {
+                        item.classList.add('collapsed');
+                    }
+                } else if (item.classList.contains('file-tree-file')) {
+                    // File preview
+                    const path = item.getAttribute('data-path');
+                    if (!path) return;
+                    const tb = document.querySelector('.hidden-path-input input, .hidden-path-input textarea');
+                    if (tb) {
+                        tb.value = path;
+                        tb.dispatchEvent(new Event('input', {bubbles: true}));
+                    }
+                    document.querySelectorAll('.file-tree-item.selected').forEach(i => i.classList.remove('selected'));
+                    item.classList.add('selected');
                 }
-                document.querySelectorAll('.file-tree-item.selected').forEach(i => i.classList.remove('selected'));
-                el.classList.add('selected');
-            };
+            });
         }
         """,
     )

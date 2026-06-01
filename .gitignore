@@ -3,4 +3,5 @@ __pycache__/
 screenshot_verify.png
 workspace/
 .env
+.agent/
 *.tmp
