@@ -556,6 +556,41 @@ now = datetime.now().strftime("%Y年%m月%d日 %H:%M，星期%w")
 - `.critic-details` — 赤土色边框反馈详情
 - `.critic-feedback` — 粉色底色 + 左边框反馈文本
 
+### 4.22 工作区文件树 + UI 优化（2026-06-01）
+
+**问题 1：** 工作区文件不可见，Agent 写文件后用户无法确认是否写入成功。
+
+**方案：** 侧边栏新增实时文件树：
+
+| 维度 | 实现 |
+|------|------|
+| 文件树生成 | `_build_file_tree()` — 递归遍历 `workspace/`，保留目录层级 |
+| 图标映射 | `_file_icon()` — 按扩展名映射 emoji（🐍 .py / 📄 .txt / 📋 .json / ⚙️ .c 等） |
+| 更新时机 | 每次 Agent 响应完成后 `.then(get_workspace_tree)`，清除对话后也刷新 |
+| CSS 样式 | `.workspace-tree` 最大高度 280px 可滚动；`.file-tree-item` hover 暖灰高亮；`.file-tree-dir` 加粗深色 |
+| 等宽字体 | JetBrains Mono，保持树对齐 |
+
+**问题 2：** Critic 开关在页面顶部 header，视觉突兀，与对话设置不协调。
+
+**方案：** 移至侧边栏，位于记忆状态下方、清除按钮上方：
+
+```
+侧边栏:
+  AI Agent
+  ── 对话 ──
+  已记忆 N 轮对话
+  ☑ Critic 审查    ← 移到这里
+  [清除对话]
+  ── 工作区 ──
+  📁 workspace/
+    📄 test.txt
+    ...
+```
+
+**CSS 更新：**
+- `.critic-toggle` → `.sidebar-critic-toggle`，header 对齐样式改为 sidebar 块级样式
+- `.workspace-tree` + `.file-tree-*` 系列样式
+
 ---
 
 ## 五、当前项目状态
@@ -584,7 +619,7 @@ now = datetime.now().strftime("%Y年%m月%d日 %H:%M，星期%w")
 | 对话框独立滚动 (输入固定) | ✓ |
 | Examples 轮换 (16条, 分页) | ✓ |
 | **多 Agent 协作 (Critic)** | **✓** |
-| Workspace 可视化侧边栏 | ✗ |
+| **Workspace 可视化侧边栏** | **✓** |
 | 文件上传 (预留 `+` 按钮) | ✗ |
 
 ### 功能清单
@@ -656,8 +691,7 @@ now = datetime.now().strftime("%Y年%m月%d日 %H:%M，星期%w")
 
 ## 七、待完成的优化方向
 
-1. **`+` 按钮功能：** 实现文件上传读取
-2. **Workspace 可视化：** Web UI 侧边栏实时显示文件树
+1. **`+` 按钮功能：** 实现文件上传读取（预留按钮已有，需接 Gradio File 组件）
 
 ---
 
