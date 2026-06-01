@@ -4,10 +4,12 @@ Gradio 网页界面 — ChatGPT 风格
 """
 
 import json as _json
+import os
 import re as _re
 
 import gradio as gr
 from agent import run_agent_stream, manage_memory, review_answer, revise_answer_stream
+from tools import WORKSPACE_DIR
 
 CUSTOM_CSS = open("style.css", encoding="utf-8").read()
 
@@ -98,6 +100,57 @@ def _build_message(thinking_steps: list, thinking_buf: str, answer: str) -> str:
 
 def _escape_html(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _file_icon(name: str) -> str:
+    """Map file extension to emoji icon."""
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    return {
+        "py": "🐍", "txt": "📄", "json": "📋", "md": "📝",
+        "js": "📜", "html": "🌐", "css": "🎨", "c": "⚙️",
+        "cpp": "⚙️", "h": "⚙️", "java": "☕", "go": "🔵",
+        "sh": "💻", "bat": "💻", "png": "🖼️", "jpg": "🖼️",
+        "svg": "🖼️", "pdf": "📕", "zip": "📦",
+    }.get(ext, "📄")
+
+
+def _build_file_tree() -> str:
+    """Generate HTML file tree of workspace directory."""
+    if not os.path.exists(WORKSPACE_DIR):
+        return '<div class="file-tree-empty">workspace 为空</div>'
+
+    entries = []
+    for root, dirs, filenames in os.walk(WORKSPACE_DIR):
+        rel = os.path.relpath(root, WORKSPACE_DIR)
+        if rel == ".":
+            rel = ""
+        for d in sorted(dirs):
+            entries.append(("dir", os.path.join(rel, d) if rel else d))
+        for f in sorted(filenames):
+            entries.append(("file", os.path.join(rel, f) if rel else f))
+
+    if not entries:
+        return '<div class="file-tree-empty">workspace 为空</div>'
+
+    lines = ['<div class="file-tree">',
+             '<div class="file-tree-root">📁 workspace</div>']
+    for kind, path in entries:
+        depth = path.count(os.sep) + 1
+        name = os.path.basename(path)
+        icon = "📁" if kind == "dir" else _file_icon(name)
+        cls = "file-tree-dir" if kind == "dir" else "file-tree-file"
+        lines.append(
+            f'<div class="file-tree-item {cls}" style="padding-left:{depth * 16}px">'
+            f'<span class="file-icon">{icon}</span> {_escape_html(name)}'
+            f"</div>"
+        )
+    lines.append("</div>")
+    return "\n".join(lines)
+
+
+def get_workspace_tree() -> str:
+    """Callback: return current workspace file tree HTML."""
+    return _build_file_tree()
 
 
 def respond(message: str, history: list, agent_history: list, critic_enabled: bool = True):
@@ -229,18 +282,20 @@ with gr.Blocks(title="AI Agent") as demo:
             gr.HTML('<div class="sidebar-brand">AI Agent</div>')
             gr.HTML('<div class="sidebar-section">对话</div>')
             memory_label = gr.Label(value="", elem_classes="memory-label")
+            critic_toggle = gr.Checkbox(
+                value=True, label="Critic 审查",
+                elem_classes="sidebar-critic-toggle",
+                container=False,
+            )
             clear_btn = gr.Button("清除对话", elem_classes="sidebar-btn")
+            gr.HTML('<div class="sidebar-section">工作区</div>')
+            workspace_tree = gr.HTML(value=_build_file_tree(), elem_classes="workspace-tree")
 
         # ── Main panel ──
         with gr.Column(elem_classes="main-panel"):
             # Header
             with gr.Row(elem_classes="chat-header"):
                 gr.HTML('<span class="chat-title">AI Agent</span>')
-                critic_toggle = gr.Checkbox(
-                    value=True, label="Critic 审查",
-                    elem_classes="critic-toggle",
-                    container=False,
-                )
 
             # Centered chat area
             with gr.Column(elem_classes="chat-area"):
@@ -301,12 +356,13 @@ with gr.Blocks(title="AI Agent") as demo:
     )
     send_event.then(lambda: "", None, msg)
     send_event.then(get_memory_status, [agent_state], [memory_label])
+    send_event.then(get_workspace_tree, None, workspace_tree)
 
     clear_btn.click(
         fn=clear_memory,
         inputs=[],
         outputs=[chatbot, agent_state, memory_label],
-    )
+    ).then(get_workspace_tree, None, workspace_tree)
 
     # Continuous auto-scroll during streaming (rAF loop)
     demo.load(
