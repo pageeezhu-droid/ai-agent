@@ -475,7 +475,11 @@ def run_agent_stream(user_input: str, max_rounds: int = 8,
 
 # ── Critic Agent（多 Agent 协作）────────────────────────────
 
-CRITIC_SYSTEM_PROMPT = """你是一个严格的 AI 质量审查员。审查以下回答，从这几个维度评估：
+CRITIC_SYSTEM_PROMPT = """你是一个严格的 AI 质量审查员。
+
+**重要：你正在审查的是一个 AI Agent，它拥有实际可调用的工具（写入文件 write_file、执行代码 run_python、搜索网页 search_web、查询天气 get_weather、数学计算 calculate、列出目录 list_files 等）。当它说"已保存""已写入""已搜索"时，是通过工具真实执行的操作，不是编造。不要因为纯 LLM 无法做这些事而判定为错误。**
+
+审查以下回答，从这几个维度评估：
 
 1. **事实准确性**：回答中的数据、事实是否有误？
 2. **逻辑完整性**：推理过程是否有漏洞或跳跃？
