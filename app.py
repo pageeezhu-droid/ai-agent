@@ -119,16 +119,25 @@ def _build_file_tree() -> str:
     if not os.path.exists(WORKSPACE_DIR):
         return '<div class="file-tree-empty">workspace 为空</div>'
 
-    entries = []
-    for root, dirs, filenames in os.walk(WORKSPACE_DIR):
-        rel = os.path.relpath(root, WORKSPACE_DIR)
-        if rel == ".":
-            rel = ""
-        for d in sorted(dirs):
-            entries.append(("dir", os.path.join(rel, d) if rel else d))
-        for f in sorted(filenames):
-            entries.append(("file", os.path.join(rel, f) if rel else f))
+    def _walk(dir_abs: str, depth: int, rel_path: str):
+        """Recursively collect entries: dirs first with their children, then files."""
+        entries = []
+        try:
+            names = sorted(os.listdir(dir_abs))
+        except OSError:
+            return entries
+        dirs = [n for n in names if os.path.isdir(os.path.join(dir_abs, n))]
+        files = [n for n in names if os.path.isfile(os.path.join(dir_abs, n))]
+        for d in dirs:
+            child_rel = os.path.join(rel_path, d) if rel_path else d
+            entries.append(("dir", d, depth, child_rel))
+            entries.extend(_walk(os.path.join(dir_abs, d), depth + 1, child_rel))
+        for f in files:
+            child_rel = os.path.join(rel_path, f) if rel_path else f
+            entries.append(("file", f, depth, child_rel))
+        return entries
 
+    entries = _walk(WORKSPACE_DIR, 1, "")
     if not entries:
         return '<div class="file-tree-empty">workspace 为空</div>'
 
@@ -136,16 +145,14 @@ def _build_file_tree() -> str:
         '<div class="file-tree">',
         '<div class="file-tree-root" data-depth="0">📁 workspace</div>',
     ]
-    for kind, path in entries:
-        depth = path.count(os.sep) + 1
-        name = os.path.basename(path)
+    for kind, name, depth, rel in entries:
         icon = "📁" if kind == "dir" else _file_icon(name)
         cls = "file-tree-dir" if kind == "dir" else "file-tree-file"
         data = f'data-depth="{depth}"'
         if kind == "dir":
-            data += f' data-dir="{_escape_html(path)}"'
+            data += f' data-dir="{_escape_html(rel)}"'
         else:
-            data += f' data-path="{_escape_html(path)}"'
+            data += f' data-path="{_escape_html(rel)}"'
         lines.append(
             f'<div class="file-tree-item {cls}" style="padding-left:{depth * 16}px" {data}>'
             f'<span class="file-icon">{icon}</span> {_escape_html(name)}'
@@ -157,7 +164,10 @@ def _build_file_tree() -> str:
 
 def get_workspace_tree() -> str:
     """Callback: return current workspace file tree HTML."""
-    return _build_file_tree()
+    import datetime
+    tree = _build_file_tree()
+    print(f"[Tree] updated at {datetime.datetime.now().strftime('%H:%M:%S')}, len={len(tree)}")
+    return tree
 
 
 def preview_file_content(path: str) -> str:
