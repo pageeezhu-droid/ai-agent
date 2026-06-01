@@ -508,9 +508,84 @@ now = datetime.now().strftime("%Y年%m月%d日 %H:%M，星期%w")
 | 侧边栏对齐 | `justify-content: center` → `flex-start`，`padding-top: 48px` |
 | 侧边栏按钮 | 黑色 `#141413` → 暖灰 `#F0EEE9` 文字 `#6B6966`，hover 变 `#E8E6E1` + 文字 `#141413` |
 
+### 4.21 多 Agent 协作 — Critic Agent（2026-06-01）
+
+**问题：** 单 Agent 对自己的回答缺乏质量审查，可能遗漏重要信息或存在事实错误。
+
+**方案：** 实现对抗式双 Agent 协作——Critic Agent：
+
+| 维度 | 实现 |
+|------|------|
+| Critic 审查 | `review_answer()` — 独立 LLM 调用，从事实准确性/逻辑完整性/遗漏/改进建议 4 个维度审查 |
+| 智能判定 | 检查 `critique` 是否包含"回答质量良好"或"无需修改"——好回答跳过修订 |
+| 修订引擎 | `revise_answer_stream()` — 根据 Critic 反馈流式生成改进版回答 |
+| Web UI 开关 | `critic_toggle` 复选框（header 右侧），默认开启，可随时关闭 |
+| 审查可视化 | 审查中：`critic-reviewing` 脉冲动画横幅；审查结果：`critic-details` 可折叠组件（赤土色边框 + 粉色底色） |
+| 错误处理 | Critic 调用异常 → 显示错误信息但不影响原回答；修订返回空 → 保留原回答 |
+
+**Critic 审查 Prompt 设计：**
+```
+从 4 个维度评估：
+1. 事实准确性 — 数据、事实是否有误？
+2. 逻辑完整性 — 推理是否有漏洞？
+3. 遗漏 — 用户问题是否有未回答部分？
+4. 改进建议 — 如何更清晰完整？
+好回答 → "回答质量良好，无需修改"
+有问题 → 具体指出，≤150字
+```
+
+**修订 Prompt 设计：**
+```
+根据审查意见改进回答。直接输出改进后的完整回答，不要 JSON 格式。
+```
+
+**数据流：**
+```
+主 Agent → final_answer → visible
+                              ↓ (critic_enabled?)
+                         review_answer() → critique
+                              ↓ (needs_revision?)
+                         revise_answer_stream() → 流式修订 → visible
+                              ↓
+                         final_content + critic-details
+```
+
+**CSS 新增：**
+- `.critic-toggle` — header 右对齐复选框，赤土色 accent
+- `.critic-reviewing` — 脉冲动画审查中横幅
+- `.critic-details` — 赤土色边框反馈详情
+- `.critic-feedback` — 粉色底色 + 左边框反馈文本
+
 ---
 
 ## 五、当前项目状态
+
+### 功能清单
+
+| 功能 | 状态 |
+|------|------|
+| ReAct 循环 | ✓ |
+| 流式输出 (SSE) | ✓ |
+| 短期记忆 (10 轮) | ✓ |
+| 时间感知 | ✓ |
+| Prompt 优化 (五合一) | ✓ |
+| Web UI (Gradio, Claude 暖色系) | ✓ |
+| 计算器 | ✓ |
+| 网页搜索 (360+搜狗+必应三引擎) | ✓ |
+| 天气查询 (wttr.in) | ✓ |
+| 文件读取 | ✓ |
+| 文件写入 | ✓ |
+| 目录列表 | ✓ |
+| Python 代码执行 (沙箱) | ✓ |
+| Agent 自反思 (经验库) | ✓ |
+| 长期记忆 (摘要压缩) | ✓ |
+| 安全沙箱 (workspace/) | ✓ |
+| 思考过程可折叠组件 | ✓ |
+| 对话框独立滚动 (输入固定) | ✓ |
+| Examples 轮换 (16条, 分页) | ✓ |
+| **多 Agent 协作 (Critic)** | **✓** |
+| Workspace 可视化侧边栏 | ✗ |
+| 文件上传 (预留 `+` 按钮) | ✗ |
 
 ### 功能清单
 
@@ -582,8 +657,7 @@ now = datetime.now().strftime("%Y年%m月%d日 %H:%M，星期%w")
 ## 七、待完成的优化方向
 
 1. **`+` 按钮功能：** 实现文件上传读取
-2. **多 Agent 协作（Critic Agent）：** 对抗式双 Agent：主 Agent 回答 → Critic 挑刺 → 主 Agent 修订
-3. **Workspace 可视化：** Web UI 侧边栏实时显示文件树
+2. **Workspace 可视化：** Web UI 侧边栏实时显示文件树
 
 ---
 

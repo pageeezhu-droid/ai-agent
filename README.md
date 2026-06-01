@@ -10,15 +10,16 @@
 - **短期记忆**：保留最近 10 轮对话上下文
 - **长期记忆**：自动摘要压缩 + memory.json 持久化，跨会话保留
 - **自反思**：工具调用失败后分析原因、换策略重试，经验持久化到 experience.json
+- **多 Agent 协作**：Critic Agent 审查回答质量（4 维度评估），自动修订改进，可切换开关
 - **安全沙箱**：文件操作限制在 `workspace/` 目录，`run_python` 拦截危险模块
-- **Web UI**：Gradio 界面，Claude 暖色系，思考过程可折叠，对话框独立滚动
+- **Web UI**：Gradio 界面，Claude 暖色系，思考过程可折叠，对话框独立滚动，Critic 审查可视化
 
 ## 架构
 
 ```
 用户输入 → app.py (Gradio UI)
               ↓
-         agent.py (ReAct 循环 + 自反思)
+         agent.py (ReAct 循环 + 自反思 + Critic)
               ↓              ↓
          llm_api.py     manage_memory()
          → DeepSeek     → 摘要压缩 → memory.json
@@ -26,6 +27,8 @@
          tools.py → 执行工具 → 返回结果
               ↓
          结果喂回 LLM → 继续思考 → final_answer
+              ↓
+         Critic Agent → 审查 → 修订 → 最终回答
 ```
 
 ## 环境要求
@@ -46,13 +49,15 @@ python app.py                  # 打开 http://localhost:17890
 ```
 ai-agent/
 ├── app.py              # Gradio Web UI
-├── agent.py            # ReAct 循环引擎
+├── agent.py            # ReAct 循环 + Critic Agent
 ├── llm_api.py          # DeepSeek API 封装 (SSE 流式)
-├── tools.py            # 6 个工具实现
-├── preview.html        # CSS 独立预览
+├── tools.py            # 7 个工具实现
+├── style.css           # 自定义 CSS (Claude 暖色系)
+├── .env.example        # API Key 配置模板
+├── .gitignore
 ├── project-journey.md  # 完整开发过程记录
 ├── requirements.txt    # 依赖
-└── workspace/          # 文件读写沙箱
+└── workspace/          # 文件读写沙箱 + memory/experience 持久化
 ```
 
 ## 技术栈

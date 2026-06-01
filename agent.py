@@ -473,6 +473,66 @@ def run_agent_stream(user_input: str, max_rounds: int = 8,
     yield {"type": "done"}
 
 
+# ── Critic Agent（多 Agent 协作）────────────────────────────
+
+CRITIC_SYSTEM_PROMPT = """你是一个严格的 AI 质量审查员。审查以下回答，从这几个维度评估：
+
+1. **事实准确性**：回答中的数据、事实是否有误？
+2. **逻辑完整性**：推理过程是否有漏洞或跳跃？
+3. **遗漏**：用户问题中是否有未被回答的部分？
+4. **改进建议**：回答是否可以更清晰、更完整？
+
+如果回答已经很好，直接说「回答质量良好，无需修改」。
+如果发现问题，用简洁的语言指出具体问题。不超过 150 字。
+
+用户问题：{user_query}
+
+待审查的回答：
+{agent_answer}
+
+审查意见（中文）："""
+
+
+def review_answer(user_query: str, agent_answer: str) -> str:
+    """Critic Agent：审查主 Agent 的回答，返回改进建议"""
+    if not agent_answer or not agent_answer.strip():
+        return "回答为空，需要重新生成。"
+    try:
+        prompt = CRITIC_SYSTEM_PROMPT.format(
+            user_query=user_query,
+            agent_answer=agent_answer,
+        )
+        return call_llm(
+            [{"role": "user", "content": prompt}],
+            temperature=0.05,
+        )
+    except Exception as e:
+        return f"审查出错：{e}"
+
+
+REVISE_SYSTEM_PROMPT = """根据审查意见改进以下回答。直接输出改进后的完整回答，不要输出 JSON 或其他格式。
+
+审查意见：{critique}
+
+原始回答：
+{original_answer}
+
+改进后的回答（直接输出，无需前缀）："""
+
+
+def revise_answer_stream(original_answer: str, critique: str):
+    """根据 Critic 反馈修订回答，流式输出"""
+    prompt = REVISE_SYSTEM_PROMPT.format(
+        critique=critique,
+        original_answer=original_answer,
+    )
+    for token in call_llm_stream(
+        [{"role": "user", "content": prompt}],
+        temperature=0.3,
+    ):
+        yield token
+
+
 # ── 终端测试 ──────────────────────────────────────────────
 
 if __name__ == "__main__":

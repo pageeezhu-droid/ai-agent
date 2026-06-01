@@ -7,7 +7,7 @@ import json as _json
 import re as _re
 
 import gradio as gr
-from agent import run_agent_stream, manage_memory
+from agent import run_agent_stream, manage_memory, review_answer, revise_answer_stream
 
 CUSTOM_CSS = open("style.css", encoding="utf-8").read()
 
@@ -100,7 +100,7 @@ def _escape_html(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def respond(message: str, history: list, agent_history: list):
+def respond(message: str, history: list, agent_history: list, critic_enabled: bool = True):
     if not message.strip():
         return history, agent_history
 
@@ -131,7 +131,6 @@ def respond(message: str, history: list, agent_history: list):
             yield history, agent_history
 
         elif event["type"] == "final_answer":
-            # Remaining buffer is last round's thinking + JSON, not answer
             if thinking_buf.strip():
                 thinking_steps.append(("thinking", thinking_buf))
             thinking_buf = ""
@@ -142,22 +141,57 @@ def respond(message: str, history: list, agent_history: list):
         elif event["type"] == "done":
             break
 
-    # Finalize
+    # Finalize base answer
     if clean_answer:
         visible = clean_answer
     elif thinking_buf.strip():
-        # Try extracting from raw final_answer JSON
         extracted = _try_extract_answer(thinking_buf)
         if extracted:
             visible = extracted
-            # Move raw JSON from buffer into thinking steps
             thinking_steps.append(("thinking", thinking_buf))
         else:
             visible = _strip_json(thinking_buf)
     else:
         visible = ""
 
+    # ── Critic Agent：审查 → 修订 ──
+    critique = None
+    needs_revision = False
+    if critic_enabled and visible and visible.strip():
+        # Show reviewing indicator
+        reviewing_msg = _build_message(thinking_steps, "", visible)
+        reviewing_msg += '\n\n<div class="critic-reviewing">🔍 Critic 审查中…</div>'
+        history[-1] = {"role": "assistant", "content": reviewing_msg}
+        yield history, agent_history
+
+        critique = review_answer(message, visible)
+
+        needs_revision = (
+            critique
+            and "回答质量良好" not in critique
+            and "无需修改" not in critique
+            and not critique.startswith("审查出错")
+        )
+        if needs_revision:
+            revision_buf = ""
+            thinking_part = _build_message(thinking_steps, "", "")
+            if thinking_part == "…":
+                thinking_part = ""
+
+            for token in revise_answer_stream(visible, critique):
+                revision_buf += token
+                msg = thinking_part + revision_buf if thinking_part else revision_buf
+                msg += f'\n\n<details class="critic-details" open><summary>🔍 Critic 审查反馈</summary><div class="critic-feedback">{_escape_html(critique)}</div></details>'
+                history[-1] = {"role": "assistant", "content": msg}
+                yield history, agent_history
+            if revision_buf.strip():
+                visible = revision_buf.strip()
+
+    # Build final message
     final_content = _build_message(thinking_steps, "", visible)
+    if critique:
+        open_attr = " open" if needs_revision else ""
+        final_content += f'\n\n<details class="critic-details"{open_attr}><summary>🔍 Critic 审查反馈</summary><div class="critic-feedback">{_escape_html(critique)}</div></details>'
     history[-1] = {"role": "assistant", "content": final_content}
 
     agent_history.append({"role": "user", "content": message})
@@ -202,6 +236,11 @@ with gr.Blocks(title="AI Agent") as demo:
             # Header
             with gr.Row(elem_classes="chat-header"):
                 gr.HTML('<span class="chat-title">AI Agent</span>')
+                critic_toggle = gr.Checkbox(
+                    value=True, label="Critic 审查",
+                    elem_classes="critic-toggle",
+                    container=False,
+                )
 
             # Centered chat area
             with gr.Column(elem_classes="chat-area"):
@@ -246,7 +285,7 @@ with gr.Blocks(title="AI Agent") as demo:
     send_event = gr.on(
         triggers=[msg.submit, submit.click],
         fn=respond,
-        inputs=[msg, chatbot, agent_state],
+        inputs=[msg, chatbot, agent_state, critic_toggle],
         outputs=[chatbot, agent_state],
         queue=True,
     )

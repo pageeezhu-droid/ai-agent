@@ -343,3 +343,64 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     white-space: pre-wrap !important;
     word-break: break-all !important;
 }
+
+/* ── Critic toggle — compact header switch ───────────────── */
+.critic-toggle {
+    margin-left: auto !important;
+    display: flex !important; align-items: center !important; gap: 6px !important;
+}
+.critic-toggle label {
+    font-size: 12px !important; color: #6B6966 !important;
+    font-weight: 500 !important; cursor: pointer !important;
+    white-space: nowrap !important;
+}
+.critic-toggle input[type="checkbox"] {
+    accent-color: #D97757 !important;
+    width: 14px !important; height: 14px !important;
+    cursor: pointer !important;
+}
+
+/* ── Critic review indicator ──────────────────────────────── */
+.critic-reviewing {
+    font-size: 13px !important; color: #D97757 !important;
+    font-weight: 500 !important;
+    padding: 8px 14px !important; margin-top: 8px !important;
+    background: #FDF2EE !important;
+    border-radius: 8px !important;
+    border-left: 3px solid #D97757 !important;
+    animation: criticPulse 1.2s ease-in-out infinite !important;
+}
+@keyframes criticPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ── Critic feedback details ──────────────────────────────── */
+.critic-details {
+    margin-top: 12px !important;
+    border: 1px solid #D97757 !important;
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
+    background: #FFFBF9 !important;
+}
+.critic-details summary {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #D97757 !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    padding: 2px 0 !important;
+}
+.critic-details summary:hover {
+    color: #B85C3A !important;
+}
+.critic-feedback {
+    margin-top: 8px !important;
+    font-size: 13px !important;
+    color: #6B6966 !important;
+    line-height: 1.6 !important;
+    padding: 8px 12px !important;
+    background: #FDF2EE !important;
+    border-radius: 6px !important;
+    border-left: 3px solid #D97757 !important;
+}
