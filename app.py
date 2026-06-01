@@ -164,10 +164,7 @@ def _build_file_tree() -> str:
 
 def get_workspace_tree() -> str:
     """Callback: return current workspace file tree HTML."""
-    import datetime
-    tree = _build_file_tree()
-    print(f"[Tree] updated at {datetime.datetime.now().strftime('%H:%M:%S')}, len={len(tree)}")
-    return tree
+    return _build_file_tree()
 
 
 def preview_file_content(path: str) -> str:
