@@ -317,7 +317,12 @@ with gr.Blocks(title="AI Agent") as demo:
             # Workspace section (top)
             gr.HTML('<div class="sidebar-section">工作区</div>')
             workspace_tree = gr.HTML(value=_build_file_tree(), elem_classes="workspace-tree")
-            selected_file_path = gr.Textbox(visible=False, elem_classes="selected-file-path")
+            selected_file_path = gr.Textbox(
+                value="",
+                elem_classes="hidden-path-input",
+                show_label=False,
+                container=False,
+            )
             file_preview = gr.HTML(value="", elem_classes="file-preview")
             # Spacer
             gr.HTML('<div class="sidebar-spacer"></div>')
@@ -453,7 +458,7 @@ with gr.Blocks(title="AI Agent") as demo:
                 e.stopPropagation();
                 const path = el.getAttribute('data-path');
                 if (!path) return;
-                const tb = document.querySelector('.selected-file-path input, .selected-file-path textarea');
+                const tb = document.querySelector('.hidden-path-input input, .hidden-path-input textarea');
                 if (tb) {
                     tb.value = path;
                     tb.dispatchEvent(new Event('input', {bubbles: true}));
