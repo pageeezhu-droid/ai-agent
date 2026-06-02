@@ -120,7 +120,7 @@ def _build_file_tree() -> str:
         return '<div class="file-tree-empty">workspace 为空</div>'
 
     def _walk(dir_abs: str, depth: int, rel_path: str):
-        """Recursively collect entries: dirs first with their children, then files."""
+        """Recursively collect entries with is_last markers."""
         entries = []
         try:
             names = sorted(os.listdir(dir_abs))
@@ -128,24 +128,50 @@ def _build_file_tree() -> str:
             return entries
         dirs = [n for n in names if os.path.isdir(os.path.join(dir_abs, n))]
         files = [n for n in names if os.path.isfile(os.path.join(dir_abs, n))]
-        for d in dirs:
-            child_rel = os.path.join(rel_path, d) if rel_path else d
-            entries.append(("dir", d, depth, child_rel))
-            entries.extend(_walk(os.path.join(dir_abs, d), depth + 1, child_rel))
-        for f in files:
-            child_rel = os.path.join(rel_path, f) if rel_path else f
-            entries.append(("file", f, depth, child_rel))
+        items = [(True, d) for d in dirs] + [(False, f) for f in files]
+        for i, (is_dir, name) in enumerate(items):
+            child_rel = os.path.join(rel_path, name) if rel_path else name
+            entry = {
+                "kind": "dir" if is_dir else "file",
+                "name": name,
+                "depth": depth,
+                "rel": child_rel,
+                "is_last": (i == len(items) - 1),
+            }
+            entries.append(entry)
+            if is_dir:
+                entries.extend(_walk(os.path.join(dir_abs, name), depth + 1, child_rel))
         return entries
 
     entries = _walk(WORKSPACE_DIR, 1, "")
     if not entries:
         return '<div class="file-tree-empty">workspace 为空</div>'
 
+    # Compute tree-drawing prefixes
+    for idx, entry in enumerate(entries):
+        parts = []
+        for d in range(1, entry["depth"]):
+            has_cont = False
+            for j in range(idx + 1, len(entries)):
+                if entries[j]["depth"] < d:
+                    break
+                if entries[j]["depth"] == d:
+                    has_cont = True
+                    break
+            parts.append(
+                '<span class="tree-vbar">│</span>  '
+                if has_cont
+                else '<span class="tree-spc"> </span>  '
+            )
+        connector = "└── " if entry["is_last"] else "├── "
+        entry["prefix"] = "".join(parts) + connector
+
     lines = [
         '<div class="file-tree">',
         '<div class="file-tree-root" data-depth="0">📁 workspace</div>',
     ]
-    for kind, name, depth, rel in entries:
+    for entry in entries:
+        kind, name, depth, rel = entry["kind"], entry["name"], entry["depth"], entry["rel"]
         icon = "📁" if kind == "dir" else _file_icon(name)
         cls = "file-tree-dir" if kind == "dir" else "file-tree-file"
         data = f'data-depth="{depth}"'
@@ -154,7 +180,8 @@ def _build_file_tree() -> str:
         else:
             data += f' data-path="{_escape_html(rel)}"'
         lines.append(
-            f'<div class="file-tree-item {cls}" style="padding-left:{depth * 16}px" {data}>'
+            f'<div class="file-tree-item {cls}" {data}>'
+            f'<span class="tree-prefix">{entry["prefix"]}</span>'
             f'<span class="file-icon">{icon}</span> {_escape_html(name)}'
             f"</div>"
         )

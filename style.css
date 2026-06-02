@@ -455,7 +455,7 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     cursor: default !important;
 }
 .file-tree-item {
-    padding: 3px 8px !important;
+    padding: 2px 8px !important;
     border-radius: 4px !important;
     color: #6B6966 !important;
     white-space: nowrap !important;
@@ -464,19 +464,21 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     cursor: pointer !important;
     transition: background 0.1s !important;
     user-select: none !important;
+    line-height: 1.6 !important;
 }
 .file-tree-item:hover {
     background: #F0EEE9 !important;
 }
 .file-tree-dir {
     color: #141413 !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
 }
 .file-tree-dir.collapsed .file-icon {
     opacity: 0.5 !important;
 }
 .file-tree-file {
     color: #6B6966 !important;
+    font-weight: 400 !important;
 }
 .file-tree-item.selected {
     background: #FDF2EE !important;
@@ -486,6 +488,23 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
 .file-icon {
     margin-right: 4px !important;
     transition: opacity 0.15s !important;
+}
+
+/* ── Tree connector lines ────────────────────────────────── */
+.tree-prefix {
+    font-family: "JetBrains Mono", "Cascadia Code", monospace !important;
+    font-size: 11px !important;
+    color: #C5C1BB !important;
+    letter-spacing: -1px !important;
+    white-space: pre !important;
+    user-select: none !important;
+    pointer-events: none !important;
+}
+.tree-vbar {
+    color: #C5C1BB !important;
+}
+.tree-spc {
+    color: transparent !important;
 }
 
 /* ── File preview ─────────────────────────────────────────── */
