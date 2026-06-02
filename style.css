@@ -35,7 +35,7 @@ html, body {
 .sidebar {
     width: 240px !important; min-width: 240px !important; flex: none !important;
     background: #ffffff !important;
-    padding: 48px 24px 32px !important;
+    padding: 48px 24px 20px !important;
     display: flex !important; flex-direction: column !important;
     justify-content: flex-start !important; gap: 4px !important;
     border-right: 1px solid #E8E6E1 !important;
@@ -45,13 +45,14 @@ html, body {
 }
 .sidebar-brand {
     font-size: 22px !important; font-weight: 700 !important;
-    color: #141413 !important; padding: 0 0 40px 0 !important;
+    color: #141413 !important; padding: 0 0 32px 0 !important;
     letter-spacing: -0.3px !important;
 }
 .sidebar-section {
     font-size: 11px !important; font-weight: 600 !important;
     color: #6B6966 !important; text-transform: uppercase !important;
-    letter-spacing: 0.8px !important; padding: 24px 0 10px !important;
+    letter-spacing: 0.8px !important; padding: 20px 0 8px !important;
+    transition: color 0.25s ease !important;
 }
 
 /* ── Memory status — plain text, no box ─────────────────── */
@@ -70,12 +71,18 @@ html, body {
     font-size: 13px !important; font-weight: 500 !important;
     cursor: pointer !important; text-align: center !important;
     width: auto !important; border: none !important;
-    transition: background 0.15s, color 0.15s !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     margin-top: 12px !important;
+    transform: scale(1) !important;
 }
 .sidebar-btn:hover {
     background: #E8E6E1 !important;
     color: #141413 !important;
+    transform: scale(1.03) !important;
+}
+.sidebar-btn:active {
+    transform: scale(0.96) !important;
+    transition: all 0.1s ease !important;
 }
 .sidebar-btn * { color: inherit !important; }
 
@@ -208,11 +215,12 @@ html, body {
     margin: 0 !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
     display: flex !important; align-items: center !important; gap: 8px !important;
-    transition: border-color 0.2s, box-shadow 0.2s !important;
+    transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 .input-row:focus-within {
     border-color: #D97757 !important;
-    box-shadow: 0 4px 12px rgba(217,119,87,0.15) !important;
+    box-shadow: 0 4px 16px rgba(217,119,87,0.18) !important;
+    transform: translateY(-1px) !important;
 }
 
 .input-row textarea, .input-row input[type="text"] {
@@ -233,9 +241,13 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     padding: 0 !important; font-size: 20px !important; font-weight: 300 !important;
     background: transparent !important; color: #6B6966 !important;
     cursor: pointer !important; display: flex !important; align-items: center !important;
-    justify-content: center !important; transition: background 0.15s !important;
+    justify-content: center !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
-.plus-btn:hover { background: #F0EEE9 !important; color: #141413 !important; }
+.plus-btn:hover {
+    background: #F0EEE9 !important; color: #141413 !important;
+    transform: rotate(90deg) !important;
+}
 .plus-btn * { color: inherit !important; }
 
 /* ── Send button ────────────────────────────────────────── */
@@ -247,11 +259,19 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     padding: 0 !important; font-size: 18px !important; font-weight: 500 !important;
     cursor: pointer !important; display: flex !important; align-items: center !important;
     justify-content: center !important;
-    transition: background 0.15s, transform 0.15s !important;
-    box-shadow: 0 1px 3px rgba(217,119,87,0.3) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 2px 8px rgba(217,119,87,0.3) !important;
 }
-.send-btn:hover { background: #C5694A !important; transform: scale(1.05) !important; }
-.send-btn:active { transform: scale(0.93) !important; }
+.send-btn:hover {
+    background: #C5694A !important;
+    transform: scale(1.08) !important;
+    box-shadow: 0 4px 16px rgba(217,119,87,0.4) !important;
+}
+.send-btn:active {
+    transform: scale(0.92) !important;
+    transition: all 0.1s ease !important;
+    box-shadow: 0 1px 4px rgba(217,119,87,0.3) !important;
+}
 .send-btn * { color: inherit !important; }
 
 /* ── Examples — white card ───────────────────────────────── */
@@ -308,8 +328,16 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
 ::-webkit-scrollbar-thumb { background: #E8E6E1 !important; border-radius: 4px !important; }
 
 /* ── Animation ──────────────────────────────────────────── */
-.message-row .panel-full-width { animation: msgIn 0.2s ease-out !important; }
-@keyframes msgIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.message-row .panel-full-width {
+    animation: msgIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+@keyframes msgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.message-row {
+    transition: opacity 0.25s ease !important;
+}
 
 /* ── Thinking process — collapsible details ─────────────── */
 .think-details {
@@ -364,21 +392,6 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
 }
 
 /* ── Sidebar critic toggle ────────────────────────────────── */
-.sidebar-critic-toggle {
-    margin: 8px 0 !important;
-    display: flex !important; align-items: center !important; gap: 8px !important;
-}
-.sidebar-critic-toggle label {
-    font-size: 13px !important; color: #6B6966 !important;
-    font-weight: 500 !important; cursor: pointer !important;
-    white-space: nowrap !important;
-}
-.sidebar-critic-toggle input[type="checkbox"] {
-    accent-color: #D97757 !important;
-    width: 15px !important; height: 15px !important;
-    cursor: pointer !important;
-}
-
 /* ── Critic review indicator ──────────────────────────────── */
 .critic-reviewing {
     font-size: 13px !important; color: #D97757 !important;
@@ -468,6 +481,7 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
 }
 .file-tree-item:hover {
     background: #F0EEE9 !important;
+    transition: background 0.18s ease !important;
 }
 .file-tree-dir {
     color: #141413 !important;
@@ -561,8 +575,36 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     overflow: hidden !important;
 }
 
-/* ── Sidebar spacer ───────────────────────────────────────── */
-.sidebar-spacer {
-    flex: 1 1 0 !important;
-    min-height: 12px !important;
+/* ── Conversation section — pinned to sidebar bottom ─────── */
+.conversation-bottom {
+    margin-top: auto !important;
+    padding-top: 12px !important;
+    border-top: 1px solid #E8E6E1 !important;
+    gap: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* ── Sidebar critic toggle ────────────────────────────────── */
+.sidebar-critic-toggle {
+    margin: 8px 0 !important;
+    display: flex !important; align-items: center !important; gap: 8px !important;
+}
+.sidebar-critic-toggle label {
+    font-size: 13px !important; color: #6B6966 !important;
+    font-weight: 500 !important; cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: color 0.25s ease !important;
+}
+.sidebar-critic-toggle label:hover {
+    color: #141413 !important;
+}
+.sidebar-critic-toggle input[type="checkbox"] {
+    accent-color: #D97757 !important;
+    width: 15px !important; height: 15px !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease !important;
+}
+.sidebar-critic-toggle input[type="checkbox"]:hover {
+    transform: scale(1.15) !important;
 }

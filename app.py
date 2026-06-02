@@ -356,17 +356,16 @@ with gr.Blocks(title="AI Agent") as demo:
                 container=False,
             )
             file_preview = gr.HTML(value="", elem_classes="file-preview")
-            # Spacer
-            gr.HTML('<div class="sidebar-spacer"></div>')
-            # Conversation section (bottom)
-            gr.HTML('<div class="sidebar-section">对话</div>')
-            memory_label = gr.Label(value="", elem_classes="memory-label")
-            critic_toggle = gr.Checkbox(
-                value=True, label="Critic 审查",
-                elem_classes="sidebar-critic-toggle",
-                container=False,
-            )
-            clear_btn = gr.Button("清除对话", elem_classes="sidebar-btn")
+            # Conversation section (pinned to bottom)
+            with gr.Column(elem_classes="conversation-bottom"):
+                gr.HTML('<div class="sidebar-section">对话</div>')
+                memory_label = gr.Label(value="", elem_classes="memory-label")
+                critic_toggle = gr.Checkbox(
+                    value=True, label="Critic 审查",
+                    elem_classes="sidebar-critic-toggle",
+                    container=False,
+                )
+                clear_btn = gr.Button("清除对话", elem_classes="sidebar-btn")
 
         # ── Main panel ──
         with gr.Column(elem_classes="main-panel"):
