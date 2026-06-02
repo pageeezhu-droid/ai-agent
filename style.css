@@ -234,19 +234,25 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
 
 /* ── Plus button ────────────────────────────────────────── */
 .plus-btn {
-    width: 48px !important; height: 36px !important;
-    min-width: 48px !important; min-height: 36px !important;
+    width: 36px !important; height: 36px !important;
+    min-width: 36px !important; min-height: 36px !important;
     border-radius: 50% !important;
-    margin-right: 8px !important;
-    padding: 0 !important; font-size: 20px !important; font-weight: 300 !important;
+    margin-right: 4px !important;
+    padding: 0 !important; font-size: 22px !important; font-weight: 300 !important;
     background: transparent !important; color: #6B6966 !important;
     cursor: pointer !important; display: flex !important; align-items: center !important;
     justify-content: center !important;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transform-origin: center center !important;
 }
 .plus-btn:hover {
     background: #F0EEE9 !important; color: #141413 !important;
-    transform: rotate(90deg) !important;
+    transform: rotate(45deg) !important;
+    box-shadow: 0 0 0 4px rgba(107, 105, 102, 0.12) !important;
+}
+.plus-btn:active {
+    transform: rotate(45deg) scale(0.9) !important;
+    transition: all 0.1s ease !important;
 }
 .plus-btn * { color: inherit !important; }
 
@@ -328,15 +334,18 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
 ::-webkit-scrollbar-thumb { background: #E8E6E1 !important; border-radius: 4px !important; }
 
 /* ── Animation ──────────────────────────────────────────── */
-.message-row .panel-full-width {
-    animation: msgIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+.message-row .panel-full-width,
+.message-row.user-row .message,
+.message-row.bot-row .message {
+    animation: msgIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both !important;
 }
 @keyframes msgIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
-.message-row {
-    transition: opacity 0.25s ease !important;
+/* Stagger: bot messages appear slightly after user */
+.message-row.bot-row .message {
+    animation-delay: 0.05s !important;
 }
 
 /* ── Thinking process — collapsible details ─────────────── */
