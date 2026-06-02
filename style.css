@@ -238,12 +238,14 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     min-width: 36px !important; min-height: 36px !important;
     border-radius: 50% !important;
     margin-right: 4px !important;
-    padding: 0 !important; font-size: 22px !important; font-weight: 300 !important;
+    padding: 0 !important; font-size: 24px !important; font-weight: 200 !important;
+    line-height: 1 !important;
     background: transparent !important; color: #6B6966 !important;
     cursor: pointer !important; display: flex !important; align-items: center !important;
     justify-content: center !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    transform-origin: center center !important;
+    transform-origin: 50% 50% !important;
+    font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif !important;
 }
 .plus-btn:hover {
     background: #F0EEE9 !important; color: #141413 !important;
@@ -254,8 +256,6 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     transform: rotate(45deg) scale(0.9) !important;
     transition: all 0.1s ease !important;
 }
-.plus-btn * { color: inherit !important; }
-
 /* ── Send button ────────────────────────────────────────── */
 .send-btn {
     background: #D97757 !important; color: #ffffff !important;

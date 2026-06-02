@@ -419,6 +419,12 @@ with gr.Blocks(title="AI Agent") as demo:
         inputs=[msg, chatbot, agent_state, critic_toggle],
         outputs=[chatbot, agent_state],
         queue=True,
+        js="""
+        () => {
+            const el = document.querySelector('.input-row textarea');
+            if (el) { el.value = ''; el.dispatchEvent(new Event('input', {bubbles: true})); }
+        }
+        """,
     )
     # Auto-scroll after each response chunk
     send_event.then(
