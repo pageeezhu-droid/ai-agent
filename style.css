@@ -28,7 +28,15 @@ html, body {
 }
 .app-layout {
     display: flex !important; min-height: 100vh !important; gap: 0 !important;
-    border-top: 1px solid #E8E6E1 !important;
+}
+/* Kill all wrapper margins/padding left */
+.gradio-container > *,
+.gradio-container .app,
+.gradio-container .contain,
+.gradio-container .main,
+[class*="svelte"] > .app {
+    padding-left: 0 !important; padding-right: 0 !important;
+    margin-left: 0 !important; margin-right: 0 !important;
 }
 
 /* ── Sidebar — warm-toned, top-aligned ──────────────────── */
@@ -59,8 +67,8 @@ html, body {
 .memory-label, .memory-label label, .memory-label span,
 .memory-label .label, .memory-label div, .memory-label * {
     background: transparent !important; border: none !important;
-    box-shadow: none !important; padding: 4px 0 !important;
-    color: #6B6966 !important; font-size: 13px !important;
+    box-shadow: none !important; padding: 2px 0 !important;
+    color: #6B6966 !important; font-size: 12px !important;
     font-weight: 400 !important; margin: 0 !important;
 }
 
@@ -95,11 +103,12 @@ html, body {
     height: 100vh !important;
 }
 .chat-header {
-    padding: 20px 32px !important;
-    background: #ffffff !important;
+    padding: 6px 24px !important;
+    background: transparent !important;
     flex-shrink: 0 !important;
+    height: 6px !important;
+    min-height: 6px !important;
 }
-.chat-title { font-size: 16px !important; font-weight: 600 !important; color: #141413 !important; }
 
 /* ── Chat area — flex col, fills remaining space ─────────── */
 .chat-area {

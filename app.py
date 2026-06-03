@@ -358,7 +358,6 @@ with gr.Blocks(title="AI Agent") as demo:
             file_preview = gr.HTML(value="", elem_classes="file-preview")
             # Conversation section (pinned to bottom)
             with gr.Column(elem_classes="conversation-bottom"):
-                gr.HTML('<div class="sidebar-section">对话</div>')
                 memory_label = gr.Label(value="", elem_classes="memory-label")
                 critic_toggle = gr.Checkbox(
                     value=True, label="Critic 审查",
@@ -369,9 +368,8 @@ with gr.Blocks(title="AI Agent") as demo:
 
         # ── Main panel ──
         with gr.Column(elem_classes="main-panel"):
-            # Header
-            with gr.Row(elem_classes="chat-header"):
-                gr.HTML('<span class="chat-title">AI Agent</span>')
+            # Header (minimal spacer)
+            gr.HTML('<div class="chat-header"></div>')
 
             # Centered chat area
             with gr.Column(elem_classes="chat-area"):
@@ -419,12 +417,6 @@ with gr.Blocks(title="AI Agent") as demo:
         inputs=[msg, chatbot, agent_state, critic_toggle],
         outputs=[chatbot, agent_state],
         queue=True,
-        js="""
-        () => {
-            const el = document.querySelector('.input-row textarea');
-            if (el) { el.value = ''; el.dispatchEvent(new Event('input', {bubbles: true})); }
-        }
-        """,
     )
     # Auto-scroll after each response chunk
     send_event.then(
