@@ -43,9 +43,9 @@ html, body {
 .sidebar {
     width: 240px !important; min-width: 240px !important; flex: none !important;
     background: #ffffff !important;
-    padding: 48px 24px 20px !important;
+    padding: 48px 24px 100px !important;
     display: flex !important; flex-direction: column !important;
-    justify-content: flex-start !important; gap: 4px !important;
+    justify-content: flex-start !important; gap: 2px !important;
     border-right: 1px solid #E8E6E1 !important;
     height: 100vh !important;
     align-self: flex-start !important;
@@ -70,6 +70,8 @@ html, body {
     box-shadow: none !important; padding: 2px 0 !important;
     color: #6B6966 !important; font-size: 12px !important;
     font-weight: 400 !important; margin: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
 }
 
 /* ── Clear button ────────────────────────────────────────── */
@@ -595,10 +597,11 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
 
 /* ── Conversation section — pinned to sidebar bottom ─────── */
 .conversation-bottom {
-    margin-top: auto !important;
-    padding-top: 12px !important;
-    border-top: 1px solid #E8E6E1 !important;
-    gap: 4px !important;
+    position: absolute !important;
+    bottom: 8px !important;
+    left: 20px !important;
+    right: 20px !important;
+    gap: 2px !important;
     display: flex !important;
     flex-direction: column !important;
 }
