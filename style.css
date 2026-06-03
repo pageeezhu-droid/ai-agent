@@ -76,23 +76,20 @@ html, body {
 
 /* ── Clear button ────────────────────────────────────────── */
 .sidebar-btn {
-    padding: 10px 24px !important; background: #F0EEE9 !important;
-    border-radius: 20px !important; color: #6B6966 !important;
-    font-size: 13px !important; font-weight: 500 !important;
+    padding: 4px 14px !important; background: #F0EEE9 !important;
+    border-radius: 14px !important; color: #6B6966 !important;
+    font-size: 11px !important; font-weight: 500 !important;
     cursor: pointer !important; text-align: center !important;
     width: auto !important; border: none !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    margin-top: 12px !important;
-    transform: scale(1) !important;
+    transition: all 0.25s ease !important;
+    margin-top: 6px !important;
 }
 .sidebar-btn:hover {
     background: #E8E6E1 !important;
     color: #141413 !important;
-    transform: scale(1.03) !important;
 }
 .sidebar-btn:active {
-    transform: scale(0.96) !important;
-    transition: all 0.1s ease !important;
+    transform: scale(0.97) !important;
 }
 .sidebar-btn * { color: inherit !important; }
 
@@ -462,7 +459,8 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     margin-top: 8px !important;
     padding: 0 !important;
     overflow-y: auto !important;
-    max-height: 220px !important;
+    max-height: 360px !important;
+    flex: 1 1 auto !important;
 }
 .workspace-tree * {
     font-size: 12px !important;
@@ -541,38 +539,62 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     color: transparent !important;
 }
 
-/* ── File preview ─────────────────────────────────────────── */
-.file-preview {
-    margin-top: 4px !important;
-    padding: 0 !important;
+/* ── File preview popup — slides out from sidebar right ──── */
+.file-popup {
+    position: fixed !important;
+    left: 240px !important;
+    top: 40px !important;
+    width: 420px !important;
+    max-height: calc(100vh - 80px) !important;
+    z-index: 100 !important;
+    background: #ffffff !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
+    border: 1px solid #E8E6E1 !important;
+    overflow: hidden !important;
+    display: none !important;
+}
+.file-popup.show {
+    display: block !important;
+    animation: popupIn 0.18s ease-out !important;
+}
+@keyframes popupIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
 }
 .file-preview-box {
-    border: 1px solid #E8E6E1 !important;
-    border-radius: 6px !important;
+    border: none !important;
     overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: calc(100vh - 80px) !important;
 }
 .file-preview-header {
-    font-size: 11px !important;
+    font-size: 12px !important;
     font-weight: 600 !important;
-    color: #6B6966 !important;
-    padding: 6px 10px !important;
-    background: #F0EEE9 !important;
+    color: #141413 !important;
+    padding: 12px 16px !important;
+    background: #ffffff !important;
     border-bottom: 1px solid #E8E6E1 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-shrink: 0 !important;
 }
 .file-preview-code {
     margin: 0 !important;
-    padding: 8px 10px !important;
-    font-size: 11px !important;
+    padding: 14px 16px !important;
+    font-size: 13px !important;
     font-family: "JetBrains Mono", "Cascadia Code", monospace !important;
     color: #141413 !important;
     white-space: pre-wrap !important;
     word-break: break-all !important;
-    max-height: 140px !important;
     overflow-y: auto !important;
     background: #FAF9F6 !important;
-    line-height: 1.5 !important;
+    line-height: 1.6 !important;
     border: none !important;
     border-radius: 0 !important;
+    flex: 1 1 auto !important;
 }
 .file-preview-more {
     color: #999692 !important;
@@ -580,8 +602,8 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
 }
 .file-preview-error {
     color: #D97757 !important;
-    font-size: 12px !important;
-    padding: 6px 8px !important;
+    font-size: 13px !important;
+    padding: 16px !important;
 }
 
 /* ── Hidden path input (for file preview JS-Python bridge) ── */

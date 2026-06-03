@@ -355,7 +355,6 @@ with gr.Blocks(title="AI Agent") as demo:
                 show_label=False,
                 container=False,
             )
-            file_preview = gr.HTML(value="", elem_classes="file-preview")
             # Conversation section (pinned to bottom)
             with gr.Column(elem_classes="conversation-bottom"):
                 memory_label = gr.Label(value="", elem_classes="memory-label")
@@ -368,6 +367,9 @@ with gr.Blocks(title="AI Agent") as demo:
 
         # ── Main panel ──
         with gr.Column(elem_classes="main-panel"):
+            # File preview popup (positioned absolutely over chat)
+            file_preview = gr.HTML(value="", elem_classes="file-popup", visible=True)
+
             # Header (minimal spacer)
             gr.HTML('<div class="chat-header"></div>')
 
@@ -466,7 +468,15 @@ with gr.Blocks(title="AI Agent") as demo:
             // Event delegation for file tree clicks
             document.addEventListener('click', function(e) {
                 const item = e.target.closest('.file-tree-item');
-                if (!item) return;
+
+                // Close popup when clicking outside tree and popup
+                if (!item) {
+                    const popup = document.querySelector('.file-popup');
+                    if (popup && !e.target.closest('.file-popup')) {
+                        popup.classList.remove('show');
+                    }
+                    return;
+                }
                 e.stopPropagation();
 
                 if (item.classList.contains('file-tree-dir')) {
@@ -486,7 +496,7 @@ with gr.Blocks(title="AI Agent") as demo:
                         item.classList.add('collapsed');
                     }
                 } else if (item.classList.contains('file-tree-file')) {
-                    // File preview
+                    // File preview popup
                     const path = item.getAttribute('data-path');
                     if (!path) return;
                     const tb = document.querySelector('.hidden-path-input input, .hidden-path-input textarea');
@@ -494,6 +504,8 @@ with gr.Blocks(title="AI Agent") as demo:
                         tb.value = path;
                         tb.dispatchEvent(new Event('input', {bubbles: true}));
                     }
+                    const popup = document.querySelector('.file-popup');
+                    if (popup) popup.classList.add('show');
                     document.querySelectorAll('.file-tree-item.selected').forEach(i => i.classList.remove('selected'));
                     item.classList.add('selected');
                 }
