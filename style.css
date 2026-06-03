@@ -76,11 +76,13 @@ html, body {
 
 /* ── Clear button ────────────────────────────────────────── */
 .sidebar-btn {
-    padding: 4px 14px !important; background: #F0EEE9 !important;
+    padding: 5px 14px !important; background: #F0EEE9 !important;
     border-radius: 14px !important; color: #6B6966 !important;
-    font-size: 11px !important; font-weight: 500 !important;
+    font-size: 12px !important; font-weight: 500 !important;
     cursor: pointer !important; text-align: center !important;
-    width: auto !important; border: none !important;
+    width: auto !important; min-width: auto !important;
+    flex-grow: 0 !important;
+    border: none !important;
     transition: all 0.25s ease !important;
     margin-top: 6px !important;
 }
@@ -552,11 +554,13 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
     border: 1px solid #E8E6E1 !important;
     overflow: hidden !important;
-    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.18s ease !important;
 }
 .file-popup.show {
-    display: block !important;
-    animation: popupIn 0.18s ease-out !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
 @keyframes popupIn {
     from { opacity: 0; transform: translateX(-12px); }
@@ -626,6 +630,7 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     gap: 2px !important;
     display: flex !important;
     flex-direction: column !important;
+    align-items: flex-start !important;
 }
 
 /* ── Sidebar critic toggle ────────────────────────────────── */
