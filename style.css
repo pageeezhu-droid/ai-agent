@@ -549,7 +549,7 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     width: 420px !important;
     min-height: 120px !important;
     max-height: calc(100vh - 80px) !important;
-    z-index: 100 !important;
+    z-index: 9999 !important;
     background: #ffffff !important;
     border-radius: 10px !important;
     box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
