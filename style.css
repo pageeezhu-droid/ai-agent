@@ -617,6 +617,21 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     padding: 16px !important;
 }
 
+/* ── Hidden preview trigger button ───────────────────────── */
+.hidden-preview-btn {
+    height: 1px !important;
+    width: 1px !important;
+    min-height: 1px !important;
+    min-width: 1px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    color: transparent !important;
+    background: transparent !important;
+    font-size: 0 !important;
+}
+
 /* ── Hidden path input (for file preview JS-Python bridge) ── */
 .hidden-path-input {
     position: absolute !important;

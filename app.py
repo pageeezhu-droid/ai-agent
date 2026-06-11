@@ -116,6 +116,8 @@ def _file_icon(name: str) -> str:
 
 def _build_file_tree() -> str:
     """Generate HTML file tree of workspace directory with clickable items."""
+    import base64
+
     if not os.path.exists(WORKSPACE_DIR):
         return '<div class="file-tree-empty">workspace 为空</div>'
 
@@ -138,6 +140,14 @@ def _build_file_tree() -> str:
                 "rel": child_rel,
                 "is_last": (i == len(items) - 1),
             }
+            # Embed file content for preview popup
+            if not is_dir:
+                try:
+                    with open(os.path.join(dir_abs, name), "r", encoding="utf-8", errors="replace") as f:
+                        fc = f.read(2000)
+                    entry["content_b64"] = base64.b64encode(fc.encode("utf-8")).decode("ascii")
+                except Exception:
+                    entry["content_b64"] = ""
             entries.append(entry)
             if is_dir:
                 entries.extend(_walk(os.path.join(dir_abs, name), depth + 1, child_rel))
@@ -179,6 +189,9 @@ def _build_file_tree() -> str:
             data += f' data-dir="{_escape_html(rel)}"'
         else:
             data += f' data-path="{_escape_html(rel)}"'
+            data += f' data-name="{_escape_html(name)}"'
+            if entry.get("content_b64"):
+                data += f' data-content="{entry["content_b64"]}"'
         lines.append(
             f'<div class="file-tree-item {cls}" {data}>'
             f'<span class="tree-prefix">{entry["prefix"]}</span>'
@@ -355,6 +368,7 @@ with gr.Blocks(title="AI Agent") as demo:
                 show_label=False,
                 container=False,
             )
+            preview_btn = gr.Button("···", elem_classes="hidden-preview-btn")
             # Conversation section (pinned to bottom)
             with gr.Column(elem_classes="conversation-bottom"):
                 memory_label = gr.Label(value="", elem_classes="memory-label")
@@ -444,8 +458,8 @@ with gr.Blocks(title="AI Agent") as demo:
         outputs=[chatbot, agent_state, memory_label],
     ).then(get_workspace_tree, None, workspace_tree)
 
-    # File preview: when user clicks a file in the tree
-    selected_file_path.change(
+    # File preview: hidden button triggered by JS on file click
+    preview_btn.click(
         fn=preview_file_content,
         inputs=selected_file_path,
         outputs=file_preview,
@@ -500,16 +514,22 @@ with gr.Blocks(title="AI Agent") as demo:
                         item.classList.add('collapsed');
                     }
                 } else if (item.classList.contains('file-tree-file')) {
-                    // File preview popup
-                    const path = item.getAttribute('data-path');
-                    if (!path) return;
-                    const tb = document.querySelector('.hidden-path-input input, .hidden-path-input textarea');
-                    if (tb) {
-                        tb.value = path;
-                        tb.dispatchEvent(new Event('input', {bubbles: true}));
-                    }
+                    // File preview popup — render directly from data attribute
+                    const name = item.getAttribute('data-name') || '';
+                    const b64 = item.getAttribute('data-content') || '';
                     const popup = document.querySelector('.file-popup');
-                    if (popup) popup.classList.add('show');
+                    if (!popup) return;
+
+                    let content = '';
+                    if (b64) {
+                        try { content = decodeURIComponent(Array.from(atob(b64), c => '%' + c.charCodeAt(0).toString(16).padStart(2,'0')).join('')); }
+                        catch(e) { content = atob(b64); }
+                    }
+                    const escaped = content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    const truncated = b64 && content.length >= 2000 ? '<span class=\"file-preview-more\">...' + '...' + '</span>' : '';
+                    popup.innerHTML = '<div class=\"file-preview-box\"><div class=\"file-preview-header\">' + name + '</div><pre class=\"file-preview-code\">' + escaped + truncated + '</pre></div>';
+                    popup.classList.add('show');
+
                     document.querySelectorAll('.file-tree-item.selected').forEach(i => i.classList.remove('selected'));
                     item.classList.add('selected');
                 }
