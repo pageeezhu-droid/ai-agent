@@ -203,7 +203,7 @@ def preview_file_content(path: str) -> str:
         if not full.startswith(os.path.normpath(WORKSPACE_DIR)):
             return '<div class="file-preview-error">无权访问此文件</div>'
         if not os.path.isfile(full):
-            return ""
+            return f'<div class="file-preview-error">文件不存在：{_escape_html(path)}</div>'
         with open(full, "r", encoding="utf-8", errors="replace") as f:
             content = f.read(2000)
         truncated = os.path.getsize(full) > 2000
