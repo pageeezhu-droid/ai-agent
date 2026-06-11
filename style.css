@@ -547,20 +547,27 @@ button, button:focus, button:focus-visible { border: 0 !important; outline: none
     left: 240px !important;
     top: 40px !important;
     width: 420px !important;
+    min-height: 120px !important;
     max-height: calc(100vh - 80px) !important;
     z-index: 100 !important;
     background: #ffffff !important;
     border-radius: 10px !important;
     box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
     border: 1px solid #E8E6E1 !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
     opacity: 0 !important;
     pointer-events: none !important;
-    transition: opacity 0.18s ease !important;
+    transition: opacity 0.18s ease, min-height 0.18s ease !important;
 }
 .file-popup.show {
     opacity: 1 !important;
     pointer-events: auto !important;
+    min-height: 200px !important;
+    display: block !important;
+}
+/* Kill Gradio inline height constraints */
+.file-popup[style*="height"] {
+    height: auto !important;
 }
 @keyframes popupIn {
     from { opacity: 0; transform: translateX(-12px); }

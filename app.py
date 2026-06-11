@@ -391,12 +391,17 @@ with gr.Blocks(title="AI Agent") as demo:
                 # Examples
                 gr.Examples(
                     examples=[
+                        # Page 1 — demo video prompts
+                        "搜索量子计算最新进展并保存到 quantum.txt",
+                        "我叫小明",
+                        "我叫什么名字？",
+                        "用 Python 生成 1 到 100 的质数，保存到 primes.txt",
+                        "列出当前目录下所有文件",
+                        "读取 hehe.txt 的内容",
+                        # Remaining — backup
                         "爱因斯坦哪年出生？活了多少岁？",
                         "杭州今天天气如何？写入 weather.txt",
-                        "搜索量子计算最新进展并保存到 quantum.txt",
                         "计算 123456 × 789012",
-                        "列出当前目录下所有文件",
-                        "用 Python 生成 1 到 100 的质数，保存到 primes.txt",
                         "北京到上海的距离是多少公里？",
                         "写一首关于人工智能的五言诗，保存到 ai_poem.txt",
                         "搜索 2026 年诺贝尔奖得主",
@@ -405,7 +410,6 @@ with gr.Blocks(title="AI Agent") as demo:
                         "斐波那契数列第 30 项是多少？",
                         "伦敦现在的天气如何？",
                         "帮我把 'Hello World' 翻译成 5 种语言",
-                        "计算 2 的 64 次方",
                         "搜索马斯克的星舰最新发射消息",
                     ],
                     examples_per_page=6,
