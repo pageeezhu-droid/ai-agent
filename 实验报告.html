@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>AI Agent 实验报告</title>
+<style>
+  body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; color: #141413; line-height: 1.8; background: #fff; }
+  h1 { font-size: 24px; border-bottom: 2px solid #D97757; padding-bottom: 8px; }
+  h2 { font-size: 20px; border-bottom: 1px solid #E8E6E1; padding-bottom: 6px; margin-top: 32px; }
+  h3 { font-size: 16px; margin-top: 24px; }
+  pre { background: #FAF9F6; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; border: 1px solid #E8E6E1; }
+  code { background: #F0EEE9; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  pre code { background: transparent; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+  th, td { border: 1px solid #E8E6E1; padding: 8px 12px; text-align: left; font-size: 14px; }
+  th { background: #FAF9F6; font-weight: 600; }
+  hr { border: none; border-top: 1px solid #E8E6E1; margin: 32px 0; }
+  blockquote { border-left: 3px solid #D97757; padding-left: 16px; color: #6B6966; margin: 16px 0; }
+  @media print { body { font-size: 12px; } h1 { font-size: 20px; } h2 { font-size: 16px; } }
+</style>
+</head>
+<body>
+<h1>AI Agent 框架搭建 — 实验报告</h1>
+<h2>选题：AI Agent 框架搭建 —— 从"会说话"到"能做事"</h2>
+<hr />
+<h2>一、核心原理与算法设计</h2>
+<h3>1.1 ReAct 范式</h3>
+<p>本项目的核心是 ReAct（Reasoning + Acting）范式：LLM 交替进行"思考"和"行动"，在循环中自主决策、调用工具、观察结果，直到完成任务。</p>
+<div class="codehilite"><pre><span></span><code>用户输入 → [思考] → [行动: 调用工具] → [观察: 工具结果] → [思考] → ... → [最终回答]
+</code></pre></div>
+
+<h3>1.2 Agent 决策闭环流程图</h3>
+<div class="codehilite"><pre><span></span><code>┌─────────────┐
+│  用户输入    │
+└──────┬──────┘
+       ▼
+┌──────────────────────────────────────────────┐
+│              ReAct 循环 (最多 8 轮)            │
+│                                              │
+│  ┌──────────┐    ┌──────────┐    ┌─────────┐ │
+│  │ 1. 思考  │───▶│ 2. 行动  │───▶│ 3. 观察 │ │
+│  │ CoT 推理 │    │ JSON 指令│    │工具结果  │ │
+│  └──────────┘    └──────────┘    └─────────┘ │
+│       ▲                                    │  │
+│       └──────────── 4. 循环 ───────────────┘  │
+│                                              │
+│  判断: action == &quot;final_answer&quot;?              │
+│    是 → 退出循环，返回最终回答                  │
+│    否 → 继续下一轮                             │
+└──────────────────────────────────────────────┘
+       ▼
+┌─────────────────┐     ┌──────────────────┐
+│  Critic 审查     │────▶│  修订（如需要）    │
+│  4 维度评估      │     │  流式输出修订版    │
+└─────────────────┘     └──────────────────┘
+       ▼
+┌─────────────┐
+│  最终回答    │
+└─────────────┘
+</code></pre></div>
+
+<h3>1.3 ReAct 系统提示词模板</h3>
+<div class="codehilite"><pre><span></span><code>你是一个 AI 智能助手，你可以使用工具来解决用户的问题。
+当前时间：{动态时间}
+
+<span class="gu">##</span> 可用工具
+<span class="k">-</span> calculate：执行数学计算。参数: expression (字符串)
+<span class="k">-</span> search_web：搜索互联网获取实时信息。参数: query (字符串)
+<span class="k">-</span> get_weather：查询城市实时天气。参数: city (字符串)
+<span class="k">-</span> read_file：读取文件内容。参数: filename (字符串)
+<span class="k">-</span> write_file：写入内容到文件。参数: filename, content (字符串)
+<span class="k">-</span> list_files：列出工作目录下的文件。参数: path (字符串)
+<span class="k">-</span> run_python：在沙箱中执行 Python 代码。参数: code (字符串)
+
+<span class="gu">##</span> 工作方式
+1. 思考：分析用户问题，决定是否需要使用工具
+2. 行动：输出 JSON 格式的工具调用指令
+3. 观察：等待工具执行结果
+4. 循环：根据结果决定下一步
+
+<span class="gu">##</span> 输出格式
+调用工具: {&quot;action&quot;: &quot;工具名&quot;, &quot;args&quot;: {&quot;参数名&quot;: &quot;参数值&quot;}}
+最终回答: {&quot;action&quot;: &quot;final_answer&quot;, &quot;content&quot;: &quot;回答内容&quot;}
+
+<span class="gu">##</span> 规则
+<span class="k">-</span> 每次只调用一个工具
+<span class="k">-</span> 必须输出合法的 JSON
+<span class="k">-</span> JSON 中字符串需转义双引号和换行符
+<span class="k">-</span> 不要编造数据，优先使用工具获取信息
+<span class="k">-</span> 工具调用失败后反思原因，换策略重试
+</code></pre></div>
+
+<h3>1.4 ReAct 主循环伪代码</h3>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_agent_stream</span><span class="p">(</span><span class="n">user_message</span><span class="p">,</span> <span class="n">conversation_history</span><span class="p">):</span>
+    <span class="n">messages</span> <span class="o">=</span> <span class="n">build_initial_messages</span><span class="p">(</span><span class="n">user_message</span><span class="p">,</span> <span class="n">history</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">round_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">MAX_ROUNDS</span><span class="p">):</span>  <span class="c1"># 最多 8 轮</span>
+        <span class="c1"># 1. 流式调用 LLM</span>
+        <span class="n">response_text</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">call_llm_stream</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
+            <span class="n">response_text</span> <span class="o">+=</span> <span class="n">token</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;token&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">}</span>
+
+        <span class="c1"># 2. 解析 JSON 指令</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">parse_action</span><span class="p">(</span><span class="n">response_text</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">action</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># 无法解析 → 视为最终回答</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;final_answer&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">response_text</span><span class="p">}</span>
+            <span class="k">break</span>
+
+        <span class="k">if</span> <span class="n">action</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;final_answer&quot;</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;final_answer&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">action</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]}</span>
+            <span class="k">break</span>
+
+        <span class="c1"># 3. 执行工具</span>
+        <span class="n">tool_name</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span>
+        <span class="n">tool_args</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="s2">&quot;args&quot;</span><span class="p">]</span>
+        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;tool_call&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">tool_name</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="n">tool_args</span><span class="p">}</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">TOOL_REGISTRY</span><span class="p">[</span><span class="n">tool_name</span><span class="p">](</span><span class="o">**</span><span class="n">tool_args</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;tool_result&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">}</span>
+
+        <span class="c1"># 4. 反思检测</span>
+        <span class="k">if</span> <span class="n">is_tool_error</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+            <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;工具返回错误：</span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;请反思失败原因，换一种方式重试。&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;工具返回：</span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;done&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<h3>1.5 Critic Agent 协作机制</h3>
+<p>主 Agent 输出回答后，Critic Agent（独立 LLM 调用）从 4 个维度审查：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>检查内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>事实准确性</td>
+<td>数据、事实是否有误？</td>
+</tr>
+<tr>
+<td>逻辑完整性</td>
+<td>推理是否有漏洞或跳跃？</td>
+</tr>
+<tr>
+<td>遗漏</td>
+<td>用户问题中是否有未被回答的部分？</td>
+</tr>
+<tr>
+<td>改进建议</td>
+<td>回答是否可以更清晰、更完整？</td>
+</tr>
+</tbody>
+</table>
+<p>Critic 发现问题时，主 Agent 根据审查意见自动修订回答。</p>
+<hr />
+<h2>二、工程实现细节</h2>
+<h3>2.1 项目架构</h3>
+<div class="codehilite"><pre><span></span><code><span class="n">ai</span><span class="o">-</span><span class="n">agent</span><span class="o">/</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">app</span><span class="o">.</span><span class="n">py</span><span class="w">           </span><span class="c1"># Gradio Web UI (界面布局 + 事件绑定 + 自定义CSS)</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">agent</span><span class="o">.</span><span class="n">py</span><span class="w">         </span><span class="c1"># ReAct 循环引擎 + Critic Agent</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">llm_api</span><span class="o">.</span><span class="n">py</span><span class="w">       </span><span class="c1"># DeepSeek API 封装 (SSE 流式 + 非流式)</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">tools</span><span class="o">.</span><span class="n">py</span><span class="w">         </span><span class="c1"># 7 个工具实现 + 注册表 + 安全沙箱</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">style</span><span class="o">.</span><span class="n">css</span><span class="w">        </span><span class="c1"># 自定义 CSS (Claude 暖色系, ~620行)</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">requirements</span><span class="o">.</span><span class="n">txt</span><span class="w"> </span><span class="c1"># 依赖: gradio, requests, python-dotenv</span>
+<span class="err">└──</span><span class="w"> </span><span class="o">.</span><span class="n">agent</span><span class="o">/</span><span class="w">          </span><span class="c1"># 长期记忆 + 经验库持久化</span>
+</code></pre></div>
+
+<h3>2.2 模块说明</h3>
+<h4><code>llm_api.py</code> — API 封装</h4>
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>功能</th>
+<th>关键参数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>call_llm()</code></td>
+<td>非流式调用，返回完整响应</td>
+<td><code>temperature=0.1</code></td>
+</tr>
+<tr>
+<td><code>call_llm_stream()</code></td>
+<td>SSE 流式调用，逐 token yield</td>
+<td><code>stream=True, timeout=60</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>模型：DeepSeek-V3 (<code>deepseek-chat</code>)</li>
+<li>max_tokens: 8192</li>
+<li>JSON 序列化使用 <code>ensure_ascii=True</code> 解决 Windows surrogate 字符导致的 400 错误</li>
+</ul>
+<h4><code>agent.py</code> — ReAct 循环引擎</h4>
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>build_system_prompt()</code></td>
+<td>构建系统提示词（工具描述 + 规则 + 长期记忆 + 经验）</td>
+</tr>
+<tr>
+<td><code>parse_action()</code></td>
+<td>三层 JSON 解析（代码块 → 直接解析 → 括号计数）</td>
+</tr>
+<tr>
+<td><code>run_agent_stream()</code></td>
+<td>主 ReAct 循环生成器，yield 结构化事件</td>
+</tr>
+<tr>
+<td><code>manage_memory()</code></td>
+<td>对话摘要压缩（超过 16 条触发，保留 6 条）</td>
+</tr>
+<tr>
+<td><code>review_answer()</code></td>
+<td>Critic 审查——4 维度评估主 Agent 回答</td>
+</tr>
+<tr>
+<td><code>revise_answer_stream()</code></td>
+<td>根据 Critic 反馈流式修订回答</td>
+</tr>
+<tr>
+<td><code>_summarize_conversation()</code></td>
+<td>调用 LLM 将旧消息压缩为 ≤200 字摘要</td>
+</tr>
+<tr>
+<td><code>_save_experience()</code> / <code>_load_experience_text()</code></td>
+<td>失败经验持久化与注入</td>
+</tr>
+</tbody>
+</table>
+<p><strong>JSON 解析策略（三层）：</strong></p>
+<ol>
+<li><strong>代码块匹配</strong>：正则提取 <code>```json {...} ```</code>，括号计数法处理嵌套</li>
+<li><strong>直接解析</strong>：尝试 <code>json.loads</code> 整段响应</li>
+<li><strong>括号计数法</strong>：找到第一个 <code>{</code>，逐字符计括号深度，匹配闭合 <code>}</code></li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_extract_json</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;{&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">start</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span> <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">depth</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">text</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;{&quot;</span><span class="p">:</span> <span class="n">depth</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">text</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;}&quot;</span><span class="p">:</span>
+            <span class="n">depth</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">depth</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">text</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p><strong>思考过程与最终回答分离：</strong></p>
+<p>Agent 流式输出中，CoT 思考文本（"思考：..."、JSON 指令）与最终回答通过事件分流：
+- <code>token</code> 事件 → 进入 <code>thinking_buf</code> 缓冲区
+- <code>tool_call</code> / <code>tool_result</code> → 进入 <code>thinking_steps[]</code> 列表
+- <code>final_answer</code> → <code>clean_answer</code> 独立存储
+- UI 渲染：思考过程在 <code>&lt;details&gt;</code> 可折叠组件中，最终回答作为干净 Markdown 显示</p>
+<p><strong>自反思机制：</strong>
+- 检测工具返回中的 8 个中文错误关键词（错误/出错/失败/超时/不存在/未找到/状态码/没有权限）
+- 触发反思：将"工具返回: {result}"替换为反思指令
+- 经验持久化到 <code>.agent/experience.json</code>，注入后续系统提示词</p>
+<p><strong>长期记忆（摘要压缩）：</strong>
+- 对话超过 16 条触发 → LLM 压缩最旧 10 条为 ≤200 字摘要
+- 持久化到 <code>.agent/memory.json</code>，最多保留 20 条
+- 重启后自动加载，跨会话保留</p>
+<h4><code>tools.py</code> — 工具模块</h4>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>实现方式</th>
+<th>安全措施</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>calculate</code></td>
+<td><code>eval()</code> + <code>__builtins__</code> 白名单</td>
+<td>限制 <code>__builtins__</code></td>
+</tr>
+<tr>
+<td><code>search_web</code></td>
+<td>三引擎级联：360 → 搜狗 → 必应</td>
+<td>频控、Cookie、反爬检测、词典过滤</td>
+</tr>
+<tr>
+<td><code>get_weather</code></td>
+<td>wttr.in API</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>read_file</code></td>
+<td><code>open()</code></td>
+<td><code>_safe_path()</code> 限制在 workspace/</td>
+</tr>
+<tr>
+<td><code>write_file</code></td>
+<td><code>open()</code></td>
+<td><code>_safe_path()</code> 限制在 workspace/</td>
+</tr>
+<tr>
+<td><code>list_files</code></td>
+<td><code>os.listdir()</code></td>
+<td><code>_safe_path()</code> 限制在 workspace/</td>
+</tr>
+<tr>
+<td><code>run_python</code></td>
+<td><code>exec()</code> + 沙箱</td>
+<td><code>__import__</code> 白名单（24 模块），10s 超时，stdout 捕获</td>
+</tr>
+</tbody>
+</table>
+<p><strong>搜索工具——三引擎级联：</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="mf">360</span><span class="n">搜索</span><span class="w"> </span><span class="p">(</span><span class="n">so</span><span class="mf">.</span><span class="n">com</span><span class="p">)</span><span class="w">  </span><span class="err">──</span><span class="n">主引擎</span><span class="err">──→</span><span class="w">  </span><span class="n">中文查询首选</span>
+<span class="w">    </span><span class="err">↓</span><span class="w"> </span><span class="n">失败</span>
+<span class="n">搜狗</span><span class="w"> </span><span class="p">(</span><span class="n">sogou</span><span class="mf">.</span><span class="n">com</span><span class="p">)</span><span class="w">  </span><span class="err">──</span><span class="n">备选</span><span class="err">──→</span><span class="w">  </span><span class="n">Session</span><span class="w"> </span><span class="n">复用</span><span class="err">，</span><span class="mf">403</span><span class="w"> </span><span class="n">重建</span>
+<span class="w">    </span><span class="err">↓</span><span class="w"> </span><span class="n">失败</span><span class="w">  </span>
+<span class="n">必应</span><span class="w"> </span><span class="p">(</span><span class="n">bing</span><span class="mf">.</span><span class="n">com</span><span class="p">)</span><span class="w">   </span><span class="err">──</span><span class="n">兜底</span><span class="err">──→</span><span class="w">  </span><span class="mf">30</span><span class="o">+</span><span class="w"> </span><span class="n">词典特征词过滤</span>
+<span class="w">    </span><span class="err">↓</span><span class="w"> </span><span class="n">失败</span>
+<span class="n">返回</span><span class="s">&quot;未找到相关信息&quot;</span>
+</code></pre></div>
+
+<h4><code>app.py</code> — Web UI</h4>
+<table>
+<thead>
+<tr>
+<th>功能</th>
+<th>实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>界面框架</td>
+<td>Gradio 6.x, <code>gr.Blocks</code></td>
+</tr>
+<tr>
+<td>布局</td>
+<td>侧边栏 (240px) + 主面板 (flex: 1)</td>
+</tr>
+<tr>
+<td>事件处理</td>
+<td><code>gr.on()</code> + <code>.then()</code> 链式调用</td>
+</tr>
+<tr>
+<td>流式渲染</td>
+<td><code>respond()</code> 生成器 yield (history, agent_history)</td>
+</tr>
+<tr>
+<td>文件树</td>
+<td>递归遍历 workspace/，树状连接线 (├── └── │)</td>
+</tr>
+<tr>
+<td>文件预览</td>
+<td>点击文件 → 弹出面板 (opacity + 滑入动画)</td>
+</tr>
+<tr>
+<td>自动滚动</td>
+<td><code>requestAnimationFrame</code> 持续检测 scrollHeight</td>
+</tr>
+<tr>
+<td>输入清空</td>
+<td><code>.then(lambda: "", None, msg)</code> 响应后清空</td>
+</tr>
+</tbody>
+</table>
+<h3>2.3 关键数据处理</h3>
+<p><strong>对话历史格式：</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="n">agent_history</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;我叫小明&quot;</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;assistant&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;你好小明！&quot;</span><span class="p">},</span>
+    <span class="o">...</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<ul>
+<li>存储干净消息对（不含工具调用标记）</li>
+<li>短期记忆：保留最近 10 轮（20 条）</li>
+<li>传给 LLM 时前置到当前对话之前</li>
+</ul>
+<p><strong>记忆压缩流程：</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="err">对话</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">16</span><span class="w"> </span><span class="err">条</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">manage_memory</span><span class="p">()</span>
+<span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="n">_summarize_conversation</span><span class="p">(</span><span class="err">最旧</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="err">条</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">LLM</span><span class="w"> </span><span class="err">压缩为摘要</span>
+<span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="n">_save_memory</span><span class="p">(</span><span class="err">摘要</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="o">.</span><span class="n">agent</span><span class="o">/</span><span class="n">memory</span><span class="o">.</span><span class="n">json</span>
+<span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="n">_load_memory</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">注入下次</span><span class="w"> </span><span class="n">system</span><span class="w"> </span><span class="n">prompt</span>
+</code></pre></div>
+
+<hr />
+<h2>三、实验结果与分析</h2>
+<h3>3.1 多步推理对话示例</h3>
+<p><strong>任务：搜索量子计算进展并保存到文件</strong></p>
+<div class="codehilite"><pre><span></span><code>[用户] 搜索量子计算最新进展并保存到 quantum.txt
+
+[思考过程 — 第 1 轮]
+思考：用户需要搜索量子计算的最新进展。我应该先使用 search_web 工具来获取信息。
+调用工具: search_web
+参数: {&quot;query&quot;: &quot;量子计算最新进展 2026&quot;}
+
+[工具返回]
+1. IBM 发布 1000+ 量子比特处理器，纠错能力大幅提升
+2. Google Quantum AI 实现容错量子计算里程碑
+3. 中国科大实现量子优越性新纪录
+
+[思考过程 — 第 2 轮]
+思考：已获取量子计算的最新进展信息。现在需要将这些内容写入 quantum.txt 文件。
+调用工具: write_file
+参数: {&quot;filename&quot;: &quot;quantum.txt&quot;, &quot;content&quot;: &quot;量子计算最新进展 (2026):\n1. IBM...&quot;}
+
+[工具返回]
+文件 quantum.txt 写入成功
+
+[思考过程 — 第 3 轮]
+思考：信息已成功搜索并保存到文件。现在可以给出最终回答。
+
+[最终回答]
+已搜索量子计算最新进展并保存到 quantum.txt。主要内容包括：
+1. IBM 发布 1000+ 量子比特处理器，纠错能力大幅提升
+2. Google Quantum AI 实现容错量子计算里程碑
+3. 中国科大实现量子优越性新纪录
+</code></pre></div>
+
+<p><strong>分析：</strong> Agent 在 3 轮内完成了"搜索 → 写入 → 总结"的完整流程。第 1 轮正确选择搜索工具，第 2 轮将搜索结果写入文件，第 3 轮给出最终回答。整个过程展示了 ReAct 循环的完整决策链。</p>
+<h3>3.2 多步推理对话示例 2（自反思）</h3>
+<p><strong>任务：读取不存在的文件</strong></p>
+<div class="codehilite"><pre><span></span><code>[用户] 读取 hehe.txt 文件的内容
+
+[思考过程 — 第 1 轮]
+调用工具: read_file
+参数: {&quot;filename&quot;: &quot;hehe.txt&quot;}
+
+[工具返回]
+错误：文件 hehe.txt 不存在
+
+[反思提示] 请反思失败原因，换一种方式重试。
+
+[思考过程 — 第 2 轮]
+思考：读取 hehe.txt 失败，该文件不存在。我先列出目录看看有哪些文件。
+
+调用工具: list_files
+参数: {&quot;path&quot;: &quot;&quot;}
+
+[工具返回]
+workspace/ 下的文件:
+  quantum.txt, weather.txt, test.txt, primes.txt
+
+[最终回答]
+hehe.txt 不存在。workspace 中现有文件：quantum.txt, weather.txt, test.txt, primes.txt。需要查看哪个？
+</code></pre></div>
+
+<p><strong>分析：</strong> Agent 在工具调用失败后触发了自反思机制。第 1 轮读取失败，第 2 轮换策略改用 <code>list_files</code>，最后告知用户文件不存在并展示可用文件。验证了反思 prompt 的有效性。</p>
+<h3>3.3 Critic Agent 协作示例</h3>
+<p><strong>任务：</strong> 用户问"我叫什么名字？"（前文提到叫小明）</p>
+<div class="codehilite"><pre><span></span><code><span class="k">[主 Agent 回答]</span>
+<span class="na">你叫小明。</span>
+
+<span class="k">[Critic 审查]</span>
+<span class="na">回答质量良好，无需修改。（因为有对话历史上下文，知道&quot;小明&quot;来自用户之前输入）</span>
+
+<span class="na">---</span>
+
+<span class="na">对比：无 Critic 上下文时：</span>
+<span class="k">[Critic 审查]</span>
+<span class="na">回答缺乏事实依据——用户未在当前对话中提供姓名，&quot;小明&quot;系编造。</span>
+<span class="na">建议改为：我无法确定你的名字，你可以告诉我。</span>
+</code></pre></div>
+
+<p><strong>分析：</strong> Critic Agent 在拥有对话历史上下文时，能正确判断"小明"来自用户之前的陈述而非编造。验证了 Critic 审查的有效性和上下文注入的必要性。</p>
+<h3>3.4 关键参数对比</h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>旧值</th>
+<th>新值</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>max_tokens</td>
+<td>2048</td>
+<td>8192</td>
+<td>支持长代码/长文件写入</td>
+</tr>
+<tr>
+<td>temperature</td>
+<td>0.7</td>
+<td>0.1</td>
+<td>减少随机性，JSON 格式更稳定</td>
+</tr>
+<tr>
+<td>最大 ReAct 轮次</td>
+<td>5</td>
+<td>8</td>
+<td>支持更复杂的多步任务</td>
+</tr>
+<tr>
+<td>短期记忆轮数</td>
+<td>—</td>
+<td>10</td>
+<td>新增短期记忆</td>
+</tr>
+<tr>
+<td>搜索引擎</td>
+<td>1 (必应)</td>
+<td>3 (360/搜狗/必应)</td>
+<td>中文搜索质量大幅提升</td>
+</tr>
+<tr>
+<td>工具数量</td>
+<td>3</td>
+<td>7</td>
+<td>新增 run_python、天气、文件操作</td>
+</tr>
+</tbody>
+</table>
+<h3>3.5 系统资源消耗</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>典型值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>单次对话 API 调用次数</td>
+<td>2-5 次（含 ReAct 循环）</td>
+</tr>
+<tr>
+<td>Critic 审查额外调用</td>
+<td>1-2 次</td>
+</tr>
+<tr>
+<td>平均响应延迟</td>
+<td>3-8 秒（含工具执行）</td>
+</tr>
+<tr>
+<td>内存占用</td>
+<td>~80MB（Python 进程）</td>
+</tr>
+<tr>
+<td>磁盘占用</td>
+<td>源代码 ~80KB，workspace 按需增长</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>四、遇到的问题与解决方案</h2>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>原因</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API 请求 400 错误</td>
+<td>Windows JSON 序列化产生 surrogate 字符</td>
+<td><code>ensure_ascii=True</code> + byte 编码</td>
+</tr>
+<tr>
+<td>搜索工具超时/不可用</td>
+<td>百度/维基百科国内受限</td>
+<td>三引擎级联：360→搜狗→必应</td>
+</tr>
+<tr>
+<td>Agent 无限循环</td>
+<td>LLM 不输出 JSON</td>
+<td><code>parse_action=None</code> 视为 final_answer</td>
+</tr>
+<tr>
+<td>长文件写入失败</td>
+<td>max_tokens 不够 + JSON 截断</td>
+<td>8192 tokens + 括号计数法</td>
+</tr>
+<tr>
+<td>聊天页面整体滚动</td>
+<td>主面板 overflow-y: auto</td>
+<td>flex 隔离：仅 chat-main 可滚动</td>
+</tr>
+<tr>
+<td>CoT 思考遮挡答案</td>
+<td>所有 token 混入气泡</td>
+<td>事件分流 + <code>&lt;details&gt;</code> 折叠组件</td>
+</tr>
+<tr>
+<td>Agent 破坏项目文件</td>
+<td>run_python 无 import 限制</td>
+<td><code>__import__</code> 白名单机制</td>
+</tr>
+<tr>
+<td>工具失败后盲目重试</td>
+<td>无失败检测</td>
+<td>自反思机制 + 经验库持久化</td>
+</tr>
+<tr>
+<td>长期对话丢失上下文</td>
+<td>短期记忆超限直接丢弃</td>
+<td>摘要压缩 + memory.json 持久化</td>
+</tr>
+<tr>
+<td>气泡多层重叠</td>
+<td>Gradio 6.x 双层卡片</td>
+<td>Playwright DOM 排查 → 逐层透明</td>
+</tr>
+<tr>
+<td>裸 JSON 泄漏到回答</td>
+<td>strip_json 仅匹配代码块</td>
+<td>括号计数法 + try_extract_answer 兜底</td>
+</tr>
+<tr>
+<td>Critic 误判记忆回答</td>
+<td>无对话历史上下文</td>
+<td>conversation_history 注入 Critic prompt</td>
+</tr>
+<tr>
+<td>搜索返回词典释义</td>
+<td>Bing 中文索引差</td>
+<td>30+ 词典特征词过滤</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>五、总结</h2>
+<p>本项目从零搭建了一个完整的 AI Agent 框架，实现了：</p>
+<ol>
+<li><strong>ReAct 循环引擎</strong>（最多 8 轮自主决策）</li>
+<li><strong>7 个工具</strong>（计算/搜索/天气/文件读写/目录/Python 沙箱）</li>
+<li><strong>流式输出</strong>（SSE 逐 token 渲染 + 思考过程可折叠）</li>
+<li><strong>短期记忆</strong>（10 轮上下文）+ <strong>长期记忆</strong>（摘要压缩 + 跨会话持久化）</li>
+<li><strong>自反思</strong>（失败检测 + 经验库 + 换策略重试）</li>
+<li><strong>多 Agent 协作</strong>（Critic 审查 + 自动修订）</li>
+<li><strong>Web UI</strong>（Gradio + Claude 暖色系 + 文件树可视化 + 弹出预览）</li>
+<li><strong>安全沙箱</strong>（路径限制 + <code>__import__</code> 白名单 + 超时控制）</li>
+</ol>
+<p>技术栈：Python + DeepSeek-V3 API + Gradio 6.x，未使用任何第三方 Agent 框架。</p>
+<p>通过本项目，深入理解了 LLM 应用层最核心的设计模式——ReAct 范式、Prompt 工程、工具编排、记忆管理和多 Agent 协作。</p>
+</body>
+</html>
